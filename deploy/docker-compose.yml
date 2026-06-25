@@ -98,6 +98,10 @@ services:
       <<: *api-environment
       AiProvider__Provider: Mock
       AiProvider__ApiKey: ${GEMINI_API_KEY}
+      Services__ReviewScoreBaseUrl: http://review-score-api:8080/
+      DataProtection__KeyRingPath: /app/.keys
+    volumes:
+      - ai-grading-keys:/app/.keys
     depends_on:
       - sqlserver
       - rabbitmq
@@ -179,3 +183,4 @@ volumes:
   sqlserver-data:
   rabbitmq-data:
   minio-data:
+  ai-grading-keys:

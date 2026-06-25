@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BuildingBlocks\Fptu.Pgs.Contracts\Fptu.Pgs.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Services\AiGrading\Fptu.Pgs.AiGrading.Api\Fptu.Pgs.AiGrading.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\ReviewScore\Fptu.Pgs.ReviewScore.Api\Fptu.Pgs.ReviewScore.Api.csproj" />
   </ItemGroup>
 
 </Project>

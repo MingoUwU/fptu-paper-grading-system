@@ -2,11 +2,12 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="FPTU Paper Grading System"
-        Width="1180"
-        Height="720"
-        MinWidth="960"
-        MinHeight="600"
+        Width="1320"
+        Height="820"
+        MinWidth="1080"
+        MinHeight="680"
         WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded"
         Background="#F4F6FA">
     <Grid>
         <Grid.ColumnDefinitions>
@@ -26,11 +27,28 @@
                                Foreground="#B8C4DD"
                                FontSize="13" />
 
-                    <Button Margin="0,0,0,8" Padding="14,10" HorizontalContentAlignment="Left" Content="Dashboard" />
-                    <Button Margin="0,0,0,8" Padding="14,10" HorizontalContentAlignment="Left" Content="Exams &amp; Rubrics" />
-                    <Button Margin="0,0,0,8" Padding="14,10" HorizontalContentAlignment="Left" Content="Upload Batch" />
-                    <Button Margin="0,0,0,8" Padding="14,10" HorizontalContentAlignment="Left" Content="Review Scores" />
-                    <Button Margin="0,0,0,8" Padding="14,10" HorizontalContentAlignment="Left" Content="Reports" />
+                    <Button Margin="0,0,0,8"
+                            Padding="14,10"
+                            HorizontalContentAlignment="Left"
+                            Content="Dashboard" />
+                    <Button Margin="0,0,0,8"
+                            Padding="14,10"
+                            HorizontalContentAlignment="Left"
+                            Content="Exams &amp; Rubrics" />
+                    <Button Margin="0,0,0,8"
+                            Padding="14,10"
+                            HorizontalContentAlignment="Left"
+                            Content="Upload Batch" />
+                    <Button Margin="0,0,0,8"
+                            Padding="14,10"
+                            HorizontalContentAlignment="Left"
+                            Background="#F77F00"
+                            Foreground="White"
+                            Content="Review Scores" />
+                    <Button Margin="0,0,0,8"
+                            Padding="14,10"
+                            HorizontalContentAlignment="Left"
+                            Content="Reports" />
                 </StackPanel>
 
                 <Border DockPanel.Dock="Bottom"
@@ -45,82 +63,296 @@
             </DockPanel>
         </Border>
 
-        <Grid Grid.Column="1" Margin="32">
+        <Grid Grid.Column="1" Margin="28">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <DockPanel>
                 <StackPanel>
-                    <TextBlock Text="Batch Grading Dashboard"
+                    <TextBlock Text="Teacher Re-grading"
                                Foreground="#14213D"
                                FontSize="28"
                                FontWeight="SemiBold" />
-                    <TextBlock Margin="0,6,0,0"
-                               Text="Theo dõi pipeline Upload → OCR → AI Suggestion → Teacher Review → Finalize"
+                    <TextBlock Margin="0,5,0,0"
+                               Text="AI chấm vòng đầu. Teacher kiểm tra từng tiêu chí và quyết định điểm chính thức."
                                Foreground="#667085"
                                FontSize="14" />
                 </StackPanel>
-                <Button DockPanel.Dock="Right"
-                        Padding="18,10"
+                <Border DockPanel.Dock="Right"
+                        Padding="12,7"
                         VerticalAlignment="Center"
-                        Background="#F77F00"
-                        Foreground="White"
-                        BorderThickness="0"
-                        Content="+ Upload batch" />
+                        Background="#E9F7EF"
+                        CornerRadius="16">
+                    <TextBlock x:Name="StatusTextBlock"
+                               Text="Chưa tải bài"
+                               Foreground="#18794E"
+                               FontWeight="SemiBold" />
+                </Border>
             </DockPanel>
 
-            <UniformGrid Grid.Row="1" Margin="0,28,0,24" Columns="4">
-                <Border Margin="0,0,12,0" Padding="18" Background="White" CornerRadius="10">
+            <Expander Grid.Row="1"
+                      Margin="0,18,0,0"
+                      Background="White"
+                      IsExpanded="False">
+                <Expander.Header>
+                    <DockPanel Width="1040">
+                        <TextBlock Text="Gemini API cá nhân (BYOK)"
+                                   Foreground="#14213D"
+                                   FontWeight="SemiBold" />
+                        <TextBlock x:Name="ApiKeyStatusTextBlock"
+                                   DockPanel.Dock="Right"
+                                   Text="Đang kiểm tra..."
+                                   Foreground="#667085" />
+                    </DockPanel>
+                </Expander.Header>
+                <Grid Margin="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Margin="0,0,12,0"
+                               VerticalAlignment="Center"
+                               Text="Gemini API Key"
+                               Foreground="#344054"
+                               FontWeight="SemiBold" />
+                    <PasswordBox x:Name="PersonalApiKeyPasswordBox"
+                                 Grid.Column="1"
+                                 Padding="10,8"
+                                 MinWidth="360" />
+                    <Button Grid.Column="2"
+                            Margin="12,0,0,0"
+                            Padding="16,8"
+                            Background="#14213D"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Click="SaveApiKey_Click"
+                            Content="Lưu key" />
+                    <Button Grid.Column="3"
+                            Margin="8,0,0,0"
+                            Padding="16,8"
+                            Click="TestApiKey_Click"
+                            Content="Kiểm tra" />
+                    <Button Grid.Column="4"
+                            Margin="8,0,0,0"
+                            Padding="16,8"
+                            Foreground="Firebrick"
+                            Click="DeleteApiKey_Click"
+                            Content="Xóa" />
+
+                    <CheckBox x:Name="AllowSystemFallbackCheckBox"
+                              Grid.Row="1"
+                              Grid.Column="1"
+                              Grid.ColumnSpan="4"
+                              Margin="0,10,0,0"
+                              IsChecked="True"
+                              Content="Nếu key cá nhân hết quota hoặc lỗi, cho phép dùng API key hệ thống" />
+                </Grid>
+            </Expander>
+
+            <Border Grid.Row="2"
+                    Margin="0,22,0,18"
+                    Padding="16"
+                    Background="White"
+                    CornerRadius="10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Margin="0,0,12,0"
+                               VerticalAlignment="Center"
+                               Text="Submission ID"
+                               Foreground="#344054"
+                               FontWeight="SemiBold" />
+                    <TextBox x:Name="SubmissionIdTextBox"
+                             Grid.Column="1"
+                             Padding="10,8"
+                             VerticalContentAlignment="Center"
+                             Text="00000000-0000-0000-0000-000000000000" />
+                    <Button Grid.Column="2"
+                            Margin="12,0,0,0"
+                            Padding="20,9"
+                            Background="#14213D"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Click="LoadScore_Click"
+                            Content="Tải kết quả AI" />
+                </Grid>
+            </Border>
+
+            <UniformGrid Grid.Row="3" Margin="0,0,0,18" Columns="4">
+                <Border Margin="0,0,8,0" Padding="16" Background="White" CornerRadius="10">
                     <StackPanel>
-                        <TextBlock Text="Uploaded" Foreground="#667085" />
-                        <TextBlock Margin="0,8,0,0" Text="0" Foreground="#14213D" FontSize="28" FontWeight="Bold" />
+                        <TextBlock Text="AI Score" Foreground="#667085" />
+                        <TextBlock x:Name="AiScoreTextBlock"
+                                   Margin="0,6,0,0"
+                                   Text="—"
+                                   Foreground="#14213D"
+                                   FontSize="25"
+                                   FontWeight="Bold" />
+                        <TextBlock x:Name="AiCredentialSourceTextBlock"
+                                   Margin="0,4,0,0"
+                                   Text="API: —"
+                                   Foreground="#98A2B3"
+                                   FontSize="11" />
                     </StackPanel>
                 </Border>
-                <Border Margin="4,0,8,0" Padding="18" Background="White" CornerRadius="10">
+                <Border Margin="4,0" Padding="16" Background="White" CornerRadius="10">
                     <StackPanel>
-                        <TextBlock Text="Processing" Foreground="#667085" />
-                        <TextBlock Margin="0,8,0,0" Text="0" Foreground="#14213D" FontSize="28" FontWeight="Bold" />
+                        <TextBlock Text="Teacher Score" Foreground="#667085" />
+                        <TextBlock x:Name="TeacherScoreTextBlock"
+                                   Margin="0,6,0,0"
+                                   Text="—"
+                                   Foreground="#14213D"
+                                   FontSize="25"
+                                   FontWeight="Bold" />
                     </StackPanel>
                 </Border>
-                <Border Margin="8,0,4,0" Padding="18" Background="White" CornerRadius="10">
+                <Border Margin="4,0" Padding="16" Background="White" CornerRadius="10">
                     <StackPanel>
-                        <TextBlock Text="Ready to review" Foreground="#667085" />
-                        <TextBlock Margin="0,8,0,0" Text="0" Foreground="#14213D" FontSize="28" FontWeight="Bold" />
+                        <TextBlock Text="Difference" Foreground="#667085" />
+                        <TextBlock x:Name="DifferenceTextBlock"
+                                   Margin="0,6,0,0"
+                                   Text="—"
+                                   Foreground="#F77F00"
+                                   FontSize="25"
+                                   FontWeight="Bold" />
                     </StackPanel>
                 </Border>
-                <Border Margin="12,0,0,0" Padding="18" Background="White" CornerRadius="10">
+                <Border Margin="8,0,0,0" Padding="16" Background="White" CornerRadius="10">
                     <StackPanel>
-                        <TextBlock Text="Finalized" Foreground="#667085" />
-                        <TextBlock Margin="0,8,0,0" Text="0" Foreground="#14213D" FontSize="28" FontWeight="Bold" />
+                        <TextBlock Text="Final Score" Foreground="#667085" />
+                        <TextBlock x:Name="FinalScoreTextBlock"
+                                   Margin="0,6,0,0"
+                                   Text="—"
+                                   Foreground="#18794E"
+                                   FontSize="25"
+                                   FontWeight="Bold" />
                     </StackPanel>
                 </Border>
             </UniformGrid>
 
-            <Border Grid.Row="2" Padding="22" Background="White" CornerRadius="10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="Recent batches"
-                               Foreground="#14213D"
-                               FontSize="18"
-                               FontWeight="SemiBold" />
-                    <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock HorizontalAlignment="Center"
-                                   Text="Chưa có batch nào"
-                                   Foreground="#344054"
+            <Grid Grid.Row="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Margin="0,0,10,0" Padding="16" Background="White" CornerRadius="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Margin="0,0,0,12"
+                                   Text="Điểm theo rubric"
+                                   Foreground="#14213D"
                                    FontSize="17"
                                    FontWeight="SemiBold" />
-                        <TextBlock Margin="0,8,0,0"
-                                   Text="Upload 5–10 bài mẫu để bắt đầu demo end-to-end."
-                                   Foreground="#98A2B3" />
-                    </StackPanel>
-                </Grid>
-            </Border>
+                        <DataGrid x:Name="CriteriaGrid"
+                                  Grid.Row="1"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  RowHeaderWidth="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Width="2*"
+                                                    Header="Criterion"
+                                                    IsReadOnly="True"
+                                                    Binding="{Binding CriterionName}" />
+                                <DataGridTextColumn Width="70"
+                                                    Header="Max"
+                                                    IsReadOnly="True"
+                                                    Binding="{Binding MaxScore, StringFormat=0.##}" />
+                                <DataGridTextColumn Width="80"
+                                                    Header="AI"
+                                                    IsReadOnly="True"
+                                                    Binding="{Binding AiScore, StringFormat=0.##}" />
+                                <DataGridTextColumn Width="90"
+                                                    Header="Teacher"
+                                                    Binding="{Binding TeacherScore, UpdateSourceTrigger=LostFocus}" />
+                                <DataGridTextColumn Width="2*"
+                                                    Header="Teacher feedback"
+                                                    Binding="{Binding TeacherFeedback, UpdateSourceTrigger=LostFocus}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1"
+                        Margin="10,0,0,0"
+                        Padding="16"
+                        Background="White"
+                        CornerRadius="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="AI feedback"
+                                   Foreground="#14213D"
+                                   FontWeight="SemiBold" />
+                        <TextBox x:Name="AiFeedbackTextBox"
+                                 Grid.Row="1"
+                                 Margin="0,8,0,16"
+                                 Padding="10"
+                                 IsReadOnly="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto" />
+                        <TextBlock Grid.Row="2"
+                                   Text="Teacher feedback"
+                                   Foreground="#14213D"
+                                   FontWeight="SemiBold" />
+                        <TextBox x:Name="TeacherFeedbackTextBox"
+                                 Grid.Row="3"
+                                 Margin="0,8,0,0"
+                                 Padding="10"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <DockPanel Grid.Row="5" Margin="0,18,0,0">
+                <TextBlock x:Name="MessageTextBlock"
+                           VerticalAlignment="Center"
+                           Foreground="#667085"
+                           Text="Nhập Submission ID để bắt đầu review." />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Margin="0,0,10,0"
+                            Padding="18,10"
+                            Background="#344054"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Click="SaveTeacherGrade_Click"
+                            Content="Lưu điểm Teacher" />
+                    <Button Padding="18,10"
+                            Background="#F77F00"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Click="FinalizeScore_Click"
+                            Content="Finalize điểm" />
+                </StackPanel>
+            </DockPanel>
         </Grid>
     </Grid>
 </Window>

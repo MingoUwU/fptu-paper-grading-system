@@ -6,8 +6,9 @@ public enum SubmissionStatus
     OcrProcessing = 2,
     OcrCompleted = 3,
     AiGrading = 4,
-    AiSuggested = 5,
-    TeacherReviewed = 6,
-    Finalized = 7,
-    Failed = 8
+    AiGraded = 5,
+    TeacherReviewing = 6,
+    TeacherGraded = 7,
+    Finalized = 8,
+    Failed = 9
 }

@@ -45,6 +45,83 @@ dotnet build Fptu.Pgs.sln --configuration Release
 dotnet test Fptu.Pgs.sln --configuration Release
 ```
 
+## EF Core Code First
+
+Repository có local tool manifest cho `dotnet-ef` và migration ban đầu của hai
+bounded context `grading` và `score`:
+
+```powershell
+dotnet tool restore
+
+dotnet tool run dotnet-ef database update `
+  --project src/Services/AiGrading/Fptu.Pgs.AiGrading.Api
+
+dotnet tool run dotnet-ef database update `
+  --project src/Services/ReviewScore/Fptu.Pgs.ReviewScore.Api
+```
+
+Hai service dùng cùng database `PaperGardingSystem`, nhưng mỗi service sở hữu
+schema và migration history riêng.
+
+## AI chấm và Teacher chấm lại
+
+Luồng điểm:
+
+```text
+OCR/Document Processing
+→ POST /grading/evaluate
+→ AI Score được lưu trong schema grading
+→ Review Score nhận bản AI grade
+→ Teacher sửa điểm theo từng criterion
+→ TeacherGraded
+→ Finalized (Teacher Score là điểm chính thức)
+```
+
+AI Score không bị ghi đè khi Teacher chấm lại. Hệ thống giữ cả hai điểm và audit
+log để so sánh độ lệch.
+
+Mặc định service dùng `Mock` để phát triển local. Để dùng Gemini:
+
+```json
+"AiProvider": {
+  "Provider": "Gemini",
+  "Model": "gemini-3.5-flash",
+  "ApiKey": "YOUR_API_KEY",
+  "BaseUrl": "https://generativelanguage.googleapis.com/"
+}
+```
+
+API nhận `ExtractedText` và/hoặc PDF dạng Base64. DOCX nên được Document
+Processing Service tách text, bảng, ảnh và chuyển sang PDF trước khi gửi sang AI.
+
+### API key cá nhân của Teacher (BYOK)
+
+Teacher Desktop có khu vực `Gemini API cá nhân`. Key được gửi qua backend và:
+
+- Mã hóa bằng ASP.NET Core Data Protection trước khi lưu database.
+- Không trả key gốc về WPF; API chỉ trả chuỗi đã che.
+- Không ghi key vào grading result, audit log hoặc exception.
+- Ưu tiên key cá nhân khi chấm.
+- Nếu Teacher bật fallback và key cá nhân lỗi quota/auth, hệ thống thử key chung.
+- Nếu Teacher không cấu hình key cá nhân, hệ thống dùng key chung.
+
+Các endpoint:
+
+```text
+GET    /grading/credentials/{teacherId}?provider=Gemini
+PUT    /grading/credentials/{teacherId}
+POST   /grading/credentials/{teacherId}/test?provider=Gemini
+DELETE /grading/credentials/{teacherId}?provider=Gemini
+```
+
+`POST /grading/evaluate` yêu cầu thêm `TeacherId`. Kết quả chỉ lưu nguồn credential:
+`User`, `System` hoặc `None`.
+
+Key ring Data Protection được giữ tại `.keys` khi chạy local và Docker volume
+`ai-grading-keys` khi chạy Compose. Production nên chuyển key ring sang secret
+store/KMS phù hợp. Khi JWT thật được triển khai, backend phải lấy `TeacherId` từ
+claim đăng nhập thay vì tin vào ID do client gửi.
+
 ## Chạy bằng Docker Compose
 
 ```powershell
@@ -110,10 +187,11 @@ src/Clients/TeacherDesktop/Fptu.Pgs.TeacherDesktop/bin/Publish/win-x64/Fptu.Pgs.
 - `GET /batches/{id}`
 - `POST /ocr/jobs`
 - `GET /ocr/results/{submissionId}`
-- `POST /grading/jobs`
-- `GET /grading/suggestions/{submissionId}`
-- `PUT /scores/{id}`
-- `POST /scores/finalize`
+- `POST /grading/evaluate`
+- `GET /grading/results/{submissionId}`
+- `GET /scores/submissions/{submissionId}`
+- `PUT /scores/submissions/{submissionId}/teacher-grade`
+- `POST /scores/submissions/{submissionId}/finalize`
 - `GET /reports/export?batchId=...`
 - `GET /audit-logs`
 - `GET /jobs/{id}`

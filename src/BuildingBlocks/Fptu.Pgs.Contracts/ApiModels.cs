@@ -23,15 +23,6 @@ public sealed record AddRubricCriterionRequest(
 
 public sealed record CreateOcrJobRequest(Guid SubmissionId, bool Force = false);
 
-public sealed record CreateAiGradingJobRequest(Guid SubmissionId, Guid ExamId);
-
-public sealed record UpdateScoreRequest(decimal Score, string? Feedback);
-
-public sealed record FinalizeScoreRequest(
-    Guid SubmissionId,
-    decimal Score,
-    string? Feedback);
-
 public sealed record BatchUploadResponse(
     Guid BatchId,
     int FileCount,

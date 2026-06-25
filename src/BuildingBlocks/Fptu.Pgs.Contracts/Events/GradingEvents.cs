@@ -18,8 +18,9 @@ public sealed record OcrFailed(
 
 public sealed record AiGradingCompleted(
     Guid SubmissionId,
-    Guid SuggestionId,
-    decimal SuggestedScore,
+    Guid AiGradingResultId,
+    decimal AiScore,
+    decimal MaxScore,
     decimal Confidence,
     DateTimeOffset OccurredAtUtc);
 
@@ -27,6 +28,14 @@ public sealed record AiGradingFailed(
     Guid SubmissionId,
     string ErrorCode,
     string ErrorMessage,
+    DateTimeOffset OccurredAtUtc);
+
+public sealed record TeacherGradingCompleted(
+    Guid SubmissionId,
+    Guid ScoreId,
+    Guid TeacherId,
+    decimal AiScore,
+    decimal TeacherScore,
     DateTimeOffset OccurredAtUtc);
 
 public sealed record ScoreFinalized(

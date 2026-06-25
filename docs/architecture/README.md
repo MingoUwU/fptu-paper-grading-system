@@ -11,7 +11,7 @@ Skeleton này bám theo tài liệu `FPTU Grading System for Paper-Based PE` phi
 - RabbitMQ dành cho domain/integration events.
 - Hangfire dành cho scheduled jobs, retry, export và cleanup.
 - MinIO hoặc local storage giữ file scan và artifact xử lý.
-- AI chỉ sinh suggestion/evidence; Teacher là người review và finalize.
+- AI chấm vòng đầu và lưu `AiScore`, evidence, feedback; Teacher chấm lại và `TeacherScore` trở thành điểm chính thức khi finalize.
 
 ## Ranh giới service
 
@@ -21,16 +21,20 @@ Skeleton này bám theo tài liệu `FPTU Grading System for Paper-Based PE` phi
 | Exam & Rubric | `academic`, `exam` | Subject, exam, question, rubric criteria |
 | Submission | `submission` | Batch upload, file metadata, trạng thái đầu vào |
 | Document Processing | `ocr` | Trích text/ảnh từ PDF, DOCX, JPG, PNG |
-| AI Grading | `grading` | Rubric-first prompt, suggestion, evidence, confidence |
-| Review & Score | `score` | Teacher chỉnh sửa và finalize điểm |
+| AI Grading | `grading` | Rubric-first grading, AI score, evidence, confidence |
+| Review & Score | `score` | Lưu riêng AI score, Teacher chấm lại và finalize điểm |
 | Report & Audit | `system` | Audit log, export Excel/PDF, notification |
 | Job Status | `system` | Tiến độ batch/submission, retry và job visibility |
 
 ## Event flow
 
-`BatchUploaded -> OcrCompleted/OcrFailed -> AiGradingCompleted/AiGradingFailed -> ScoreFinalized`
+`BatchUploaded -> OcrCompleted/OcrFailed -> AiGradingCompleted/AiGradingFailed -> TeacherGradingCompleted -> ScoreFinalized`
 
 Các contract ban đầu nằm trong `src/BuildingBlocks/Fptu.Pgs.Contracts`. Khi triển khai broker thật, mỗi consumer phải idempotent và lưu trạng thái xử lý để tránh chấm trùng.
+
+AI Grading hỗ trợ BYOK cho Teacher. Credential cá nhân được mã hóa trong schema
+`grading`; hệ thống chỉ lưu `User/System/None` vào kết quả chấm. Key hệ thống vẫn
+nằm trong secret configuration của backend.
 
 ## Cách phát triển từng service
 
