@@ -30,6 +30,21 @@ builder.Services.AddDbContext<AiGradingDbContext>(options =>
 });
 builder.Services.Configure<AiProviderOptions>(
     builder.Configuration.GetSection(AiProviderOptions.SectionName));
+builder.Services.PostConfigure<AiProviderOptions>(options =>
+{
+    var explicitProvider = builder.Configuration["AI_PROVIDER"];
+    if (!string.IsNullOrWhiteSpace(explicitProvider))
+    {
+        options.Provider = explicitProvider;
+        return;
+    }
+
+    if (!string.IsNullOrWhiteSpace(builder.Configuration["GOOGLE_API_KEY"]) ||
+        !string.IsNullOrWhiteSpace(builder.Configuration["GOOGLE_API_KEYS"]))
+    {
+        options.Provider = "Gemini";
+    }
+});
 var keyRingPath = builder.Configuration["DataProtection:KeyRingPath"];
 var dataProtectionBuilder = builder.Services
     .AddDataProtection()
@@ -48,6 +63,7 @@ builder.Services.AddHttpClient<GeminiGradingProvider>((services, client) =>
 });
 builder.Services.AddScoped<IGradingProviderResolver, GradingProviderResolver>();
 builder.Services.AddScoped<AiCredentialService>();
+builder.Services.AddSingleton<ISystemApiKeyPool, SystemApiKeyPool>();
 builder.Services.AddScoped<GradingExecutionService>();
 builder.Services.AddHttpClient<ReviewScoreClient>(client =>
 {

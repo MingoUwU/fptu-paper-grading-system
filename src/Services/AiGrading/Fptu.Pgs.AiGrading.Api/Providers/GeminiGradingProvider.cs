@@ -24,7 +24,7 @@ public sealed class GeminiGradingProvider(
         if (string.IsNullOrWhiteSpace(context.ApiKey))
         {
             throw new InvalidOperationException(
-                "Gemini API key is missing. Configure AiProvider:ApiKey or use the Mock provider.");
+                "Gemini API key is missing. Configure GOOGLE_API_KEY, GOOGLE_API_KEYS, or use the Mock provider.");
         }
 
         var parts = new List<object>

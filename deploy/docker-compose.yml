@@ -96,8 +96,9 @@ services:
         ASSEMBLY_NAME: Fptu.Pgs.AiGrading.Api
     environment:
       <<: *api-environment
-      AiProvider__Provider: Mock
-      AiProvider__ApiKey: ${GEMINI_API_KEY}
+      AiProvider__Provider: ${AI_PROVIDER:-Mock}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_API_KEYS: ${GOOGLE_API_KEYS}
       Services__ReviewScoreBaseUrl: http://review-score-api:8080/
       DataProtection__KeyRingPath: /app/.keys
     volumes:

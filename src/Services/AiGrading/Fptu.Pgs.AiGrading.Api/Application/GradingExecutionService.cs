@@ -1,14 +1,13 @@
 using System.Net;
 using Fptu.Pgs.AiGrading.Api.Providers;
 using Fptu.Pgs.Contracts;
-using Microsoft.Extensions.Options;
 
 namespace Fptu.Pgs.AiGrading.Api.Application;
 
 public sealed class GradingExecutionService(
     IGradingProviderResolver providerResolver,
     AiCredentialService credentialService,
-    IOptions<AiProviderOptions> options,
+    ISystemApiKeyPool systemApiKeyPool,
     ILogger<GradingExecutionService> logger)
 {
     public async Task<ProviderGradingResult> ExecuteAsync(
@@ -28,13 +27,12 @@ public sealed class GradingExecutionService(
             request.TeacherId,
             "Gemini",
             cancellationToken);
-        var systemApiKey = options.Value.ApiKey;
 
         if (userCredential is null)
         {
-            return await provider.GradeAsync(
+            return await ExecuteWithSystemKeysAsync(
+                provider,
                 request,
-                new GradingProviderContext(systemApiKey, "System"),
                 cancellationToken);
         }
 
@@ -47,18 +45,63 @@ public sealed class GradingExecutionService(
         }
         catch (HttpRequestException exception)
             when (userCredential.AllowSystemFallback &&
-                  !string.IsNullOrWhiteSpace(systemApiKey) &&
+                  systemApiKeyPool.Count > 0 &&
                   ShouldFallback(exception.StatusCode))
         {
             logger.LogWarning(
-                "User Gemini credential failed for teacher {TeacherId}; retrying with the system credential.",
+                "User Gemini credential failed for teacher {TeacherId}; retrying with the system key pool.",
                 request.TeacherId);
 
-            return await provider.GradeAsync(
+            return await ExecuteWithSystemKeysAsync(
+                provider,
                 request,
-                new GradingProviderContext(systemApiKey, "System"),
                 cancellationToken);
         }
+    }
+
+    private async Task<ProviderGradingResult> ExecuteWithSystemKeysAsync(
+        IGradingProvider provider,
+        GradeSubmissionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var candidates = systemApiKeyPool.GetCandidates();
+        if (candidates.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "No system Gemini API key is configured. Set GOOGLE_API_KEY or GOOGLE_API_KEYS.");
+        }
+
+        HttpRequestException? lastException = null;
+        for (var index = 0; index < candidates.Count; index++)
+        {
+            try
+            {
+                return await provider.GradeAsync(
+                    request,
+                    new GradingProviderContext(candidates[index], "System"),
+                    cancellationToken);
+            }
+            catch (HttpRequestException exception)
+                when (ShouldFallback(exception.StatusCode))
+            {
+                lastException = exception;
+
+                if (index + 1 < candidates.Count)
+                {
+                    logger.LogWarning(
+                        "A system Gemini key failed with status {StatusCode}; trying the next configured key.",
+                        exception.StatusCode);
+                }
+            }
+        }
+
+        if (lastException is not null)
+        {
+            throw lastException;
+        }
+
+        throw new InvalidOperationException(
+            "All configured system Gemini API keys failed.");
     }
 
     private static bool ShouldFallback(HttpStatusCode? statusCode) =>

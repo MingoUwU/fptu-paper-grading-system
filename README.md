@@ -82,17 +82,42 @@ log để so sánh độ lệch.
 
 Mặc định service dùng `Mock` để phát triển local. Để dùng Gemini:
 
-```json
-"AiProvider": {
-  "Provider": "Gemini",
-  "Model": "gemini-3.5-flash",
-  "ApiKey": "YOUR_API_KEY",
-  "BaseUrl": "https://generativelanguage.googleapis.com/"
-}
+```env
+AI_PROVIDER=Gemini
+GOOGLE_API_KEY=api-key-1
+GOOGLE_API_KEYS=api-key-2,api-key-3,api-key-4
 ```
+
+Nếu có `GOOGLE_API_KEY` hoặc `GOOGLE_API_KEYS` mà không khai báo
+`AI_PROVIDER`, service tự chọn Gemini. Đặt `AI_PROVIDER=Mock` khi muốn ép dùng
+mock dù máy đang có key.
 
 API nhận `ExtractedText` và/hoặc PDF dạng Base64. DOCX nên được Document
 Processing Service tách text, bảng, ảnh và chuyển sang PDF trước khi gửi sang AI.
+
+### Nhiều system API key
+
+AI Grading Service đọc:
+
+```env
+GOOGLE_API_KEY=api-1
+GOOGLE_API_KEYS=api-2,api-3,api-4,api-5
+```
+
+- `GOOGLE_API_KEY` là key chính và cũng tham gia pool.
+- `GOOGLE_API_KEYS` là danh sách key bổ sung, phân cách bằng dấu phẩy.
+- Service loại bỏ key trùng và chọn điểm bắt đầu theo round-robin.
+- Nếu một key trả lỗi quota/auth/tạm thời, service thử key tiếp theo.
+- Kết quả chỉ lưu `CredentialSource=System`; không lưu key hoặc vị trí key.
+- Có thể chỉ cấu hình một trong hai biến.
+
+Key cá nhân do Teacher nhập vẫn là một key duy nhất và được ưu tiên. Nếu Teacher
+không có key, hệ thống dùng pool. Nếu key cá nhân lỗi, pool chỉ được dùng khi
+Teacher bật tùy chọn fallback.
+
+Lưu ý: các key thuộc cùng Google Cloud project thường chia sẻ cùng quota project.
+Pool hữu ích cho các credential/project hợp lệ khác nhau và khả năng dự phòng,
+không nên dùng để né giới hạn dịch vụ.
 
 ### API key cá nhân của Teacher (BYOK)
 
