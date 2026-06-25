@@ -83,6 +83,22 @@ Chạy tám service trước, sau đó chạy API Gateway. Mỗi service có:
 - `/health` để health check.
 - `/openapi/v1.json` khi chạy môi trường Development.
 
+## Publish Teacher Desktop thành EXE
+
+Teacher Desktop sử dụng WPF trên .NET 10. Profile `Windows-x64` tạo một file EXE
+self-contained, máy giáo viên không cần cài .NET Runtime:
+
+```powershell
+dotnet publish src/Clients/TeacherDesktop/Fptu.Pgs.TeacherDesktop/Fptu.Pgs.TeacherDesktop.csproj `
+  /p:PublishProfile=Windows-x64
+```
+
+Output:
+
+```text
+src/Clients/TeacherDesktop/Fptu.Pgs.TeacherDesktop/bin/Publish/win-x64/Fptu.Pgs.TeacherDesktop.exe
+```
+
 ## Endpoint skeleton
 
 - `POST /auth/login`
