@@ -59,6 +59,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fptu.Pgs.Architecture.Tests", "tests\Fptu.Pgs.Architecture.Tests\Fptu.Pgs.Architecture.Tests.csproj", "{3CD5BD17-2DCC-4365-B533-1A27020390CE}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deploy", "deploy", "{E5F7CBBA-6320-4AE5-A7FA-FC37B468EC91}"
+	ProjectSection(SolutionItems) = preProject
+		deploy\.env = deploy\.env
+		deploy\.env.example = deploy\.env.example
+		deploy\docker-compose.yml = deploy\docker-compose.yml
+		deploy\Dockerfile.service = deploy\Dockerfile.service
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
