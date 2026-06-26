@@ -9,6 +9,7 @@ public sealed class ReviewScoreDbContext(DbContextOptions<ReviewScoreDbContext> 
     public DbSet<SubmissionScore> SubmissionScores => Set<SubmissionScore>();
     public DbSet<CriterionScore> CriterionScores => Set<CriterionScore>();
     public DbSet<ScoreAuditLog> ScoreAuditLogs => Set<ScoreAuditLog>();
+    public DbSet<GradingAssignment> GradingAssignments => Set<GradingAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +62,15 @@ public sealed class ReviewScoreDbContext(DbContextOptions<ReviewScoreDbContext> 
             entity.Property(x => x.OldScore).HasPrecision(7, 2);
             entity.Property(x => x.NewScore).HasPrecision(7, 2);
             entity.HasIndex(x => new { x.SubmissionScoreId, x.OccurredAtUtc });
+        });
+
+        modelBuilder.Entity<GradingAssignment>(entity =>
+        {
+            entity.ToTable("GradingAssignments");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.SubmissionId).IsUnique();
+            entity.HasIndex(x => new { x.TeacherId, x.Status });
+            entity.HasIndex(x => new { x.ExamId, x.TeacherId });
         });
     }
 }

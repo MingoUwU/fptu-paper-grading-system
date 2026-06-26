@@ -3,10 +3,13 @@ namespace Fptu.Pgs.Contracts;
 public sealed record LoginRequest(string Email, string Password);
 
 public sealed record LoginResponse(
+    Guid UserId,
+    string Email,
+    string FullName,
+    string Role,
     string AccessToken,
     string RefreshToken,
-    DateTimeOffset ExpiresAtUtc,
-    string Role);
+    DateTimeOffset ExpiresAtUtc);
 
 public sealed record RefreshTokenRequest(string RefreshToken);
 

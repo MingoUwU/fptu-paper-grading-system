@@ -10,6 +10,8 @@
         Loaded="Window_Loaded"
         Background="#F4F6FA">
     <Grid>
+        <Grid x:Name="AppShell"
+              Visibility="Collapsed">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="230" />
             <ColumnDefinition Width="*" />
@@ -26,6 +28,12 @@
                                Text="Teacher Desktop"
                                Foreground="#B8C4DD"
                                FontSize="13" />
+                    <TextBlock x:Name="CurrentUserTextBlock"
+                               Margin="0,0,0,16"
+                               Text="Not signed in"
+                               Foreground="#D8E2F3"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
 
                     <Button x:Name="DashboardButton"
                             Margin="0,0,0,8"
@@ -73,6 +81,13 @@
                     <StackPanel>
                         <TextBlock Text="API Gateway" Foreground="#B8C4DD" FontSize="11" />
                         <TextBlock Text="http://localhost:5000" Foreground="White" FontSize="12" />
+                        <Button Margin="0,12,0,0"
+                                Padding="12,8"
+                                HorizontalContentAlignment="Center"
+                                Background="#E5E7EB"
+                                Foreground="#111827"
+                                Click="Logout_Click"
+                                Content="Logout" />
                     </StackPanel>
                 </Border>
             </DockPanel>
@@ -192,7 +207,8 @@
                                Foreground="#667085"
                                FontSize="14"
                                TextWrapping="Wrap" />
-                    <DataGrid AutoGenerateColumns="False"
+                    <DataGrid x:Name="RubricCriteriaGrid"
+                              AutoGenerateColumns="False"
                               CanUserAddRows="False"
                               HeadersVisibility="Column"
                               MinHeight="280">
@@ -583,5 +599,87 @@
                 </StackPanel>
             </DockPanel>
         </Grid>
+        </Grid>
+
+        <Border x:Name="LoginView"
+                Background="#F4F6FA">
+            <Grid>
+                <Border Width="430"
+                        Padding="30"
+                        Background="White"
+                        CornerRadius="16"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel>
+                        <TextBlock Text="FPTU PGS"
+                                   Foreground="#14213D"
+                                   FontSize="32"
+                                   FontWeight="Bold"
+                                   TextAlignment="Center" />
+                        <TextBlock Margin="0,6,0,28"
+                                   Text="Login to Paper Grading System"
+                                   Foreground="#667085"
+                                   FontSize="14"
+                                   TextAlignment="Center" />
+
+                        <TextBlock Text="Email"
+                                   Foreground="#344054"
+                                   FontWeight="SemiBold" />
+                        <TextBox x:Name="LoginEmailTextBox"
+                                 Margin="0,6,0,16"
+                                 Padding="12,9"
+                                 Text="teacher.swt@fptu.edu.vn" />
+
+                        <TextBlock Text="Password"
+                                   Foreground="#344054"
+                                   FontWeight="SemiBold" />
+                        <PasswordBox x:Name="LoginPasswordBox"
+                                     Margin="0,6,0,10"
+                                     Padding="12,9"
+                                     Password="Teacher@123" />
+
+                        <TextBlock Text="Seed users: admin@fptu.edu.vn / Admin@123, teacher.swt@fptu.edu.vn / Teacher@123"
+                                   Foreground="#98A2B3"
+                                   FontSize="11"
+                                   TextWrapping="Wrap" />
+
+                        <Button Margin="0,24,0,0"
+                                Padding="16,11"
+                                Background="#F77F00"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="Login_Click"
+                                Content="Login" />
+                        <TextBlock x:Name="LoginMessageTextBlock"
+                                   Margin="0,14,0,0"
+                                   Foreground="Firebrick"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,16,16,0"
+                Padding="10,6"
+                Background="#EEF2F7"
+                CornerRadius="10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="LanguageLabelTextBlock"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"
+                           Text="Language"
+                           Foreground="#344054"
+                           FontSize="12"
+                           FontWeight="SemiBold" />
+                <ComboBox x:Name="LanguageComboBox"
+                          Width="72"
+                          SelectionChanged="LanguageComboBox_SelectionChanged">
+                    <ComboBoxItem Tag="vi" Content="VI" />
+                    <ComboBoxItem Tag="en" Content="EN" />
+                </ComboBox>
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>
