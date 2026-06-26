@@ -22,12 +22,27 @@ builder.Services.AddDbContext<ReviewScoreDbContext>(options =>
 
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlServer => sqlServer.MigrationsHistoryTable(
-            "__EFMigrationsHistory",
-            "score"));
+        sqlServer =>
+        {
+            sqlServer.MigrationsHistoryTable(
+                "__EFMigrationsHistory",
+                "score");
+            sqlServer.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null);
+        });
 });
 
 var app = builder.Build();
+
+if (!string.Equals(
+    builder.Configuration["DatabaseProvider"],
+    "InMemory",
+    StringComparison.OrdinalIgnoreCase))
+{
+    await MigrateDatabaseAsync<ReviewScoreDbContext>(app);
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -170,5 +185,42 @@ static Task<SubmissionScore?> LoadScoreAsync(
         .Include(x => x.Criteria)
         .Include(x => x.AuditLogs)
         .FirstOrDefaultAsync(x => x.SubmissionId == submissionId, cancellationToken);
+
+static async Task MigrateDatabaseAsync<TDbContext>(WebApplication app)
+    where TDbContext : DbContext
+{
+    const int maxAttempts = 12;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<TDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<TDbContext>>();
+
+        try
+        {
+            await dbContext.Database.MigrateAsync();
+            logger.LogInformation(
+                "Database migrations applied for {DbContext}.",
+                typeof(TDbContext).Name);
+            return;
+        }
+        catch (Exception exception) when (attempt < maxAttempts)
+        {
+            var delay = TimeSpan.FromSeconds(Math.Min(30, attempt * 3));
+            logger.LogWarning(
+                exception,
+                "Database migration attempt {Attempt}/{MaxAttempts} failed. Retrying in {DelaySeconds}s.",
+                attempt,
+                maxAttempts,
+                delay.TotalSeconds);
+            await Task.Delay(delay);
+        }
+    }
+
+    using var finalScope = app.Services.CreateScope();
+    var finalDbContext = finalScope.ServiceProvider.GetRequiredService<TDbContext>();
+    await finalDbContext.Database.MigrateAsync();
+}
 
 public partial class Program;
