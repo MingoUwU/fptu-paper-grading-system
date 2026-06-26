@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Fptu.Pgs.Contracts;
 
 namespace Fptu.Pgs.TeacherDesktop;
@@ -21,15 +22,82 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<CriterionReviewRow> _criteria = [];
     private ScoreComparisonResponse? _currentScore;
 
+    private static readonly Brush ActiveNavigationBackground =
+        new SolidColorBrush(Color.FromRgb(247, 127, 0));
+
+    private static readonly Brush ActiveNavigationForeground = Brushes.White;
+
+    private static readonly Brush InactiveNavigationBackground =
+        new SolidColorBrush(Color.FromRgb(229, 231, 235));
+
+    private static readonly Brush InactiveNavigationForeground =
+        new SolidColorBrush(Color.FromRgb(17, 24, 39));
+
     public MainWindow()
     {
         InitializeComponent();
         CriteriaGrid.ItemsSource = _criteria;
+        ShowView("ReviewScores");
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         await LoadCredentialStatusAsync();
+    }
+
+    private void Navigate_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string viewName })
+        {
+            ShowView(viewName);
+        }
+    }
+
+    private void ShowView(string viewName)
+    {
+        DashboardView.Visibility = viewName == "Dashboard"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ExamsRubricsView.Visibility = viewName == "ExamsRubrics"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        UploadBatchView.Visibility = viewName == "UploadBatch"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ReviewScoresView.Visibility = viewName == "ReviewScores"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ReportsView.Visibility = viewName == "Reports"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        var activeButton = viewName switch
+        {
+            "Dashboard" => DashboardButton,
+            "ExamsRubrics" => ExamsRubricsButton,
+            "UploadBatch" => UploadBatchButton,
+            "ReviewScores" => ReviewScoresButton,
+            "Reports" => ReportsButton,
+            _ => ReviewScoresButton
+        };
+
+        foreach (var button in new[]
+        {
+            DashboardButton,
+            ExamsRubricsButton,
+            UploadBatchButton,
+            ReviewScoresButton,
+            ReportsButton
+        })
+        {
+            var isActive = ReferenceEquals(button, activeButton);
+            button.Background = isActive
+                ? ActiveNavigationBackground
+                : InactiveNavigationBackground;
+            button.Foreground = isActive
+                ? ActiveNavigationForeground
+                : InactiveNavigationForeground;
+        }
     }
 
     private async void SaveApiKey_Click(object sender, RoutedEventArgs e)

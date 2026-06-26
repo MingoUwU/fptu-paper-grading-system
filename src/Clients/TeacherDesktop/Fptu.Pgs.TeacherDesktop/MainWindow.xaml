@@ -27,27 +27,42 @@
                                Foreground="#B8C4DD"
                                FontSize="13" />
 
-                    <Button Margin="0,0,0,8"
+                    <Button x:Name="DashboardButton"
+                            Margin="0,0,0,8"
                             Padding="14,10"
                             HorizontalContentAlignment="Left"
+                            Tag="Dashboard"
+                            Click="Navigate_Click"
                             Content="Dashboard" />
-                    <Button Margin="0,0,0,8"
+                    <Button x:Name="ExamsRubricsButton"
+                            Margin="0,0,0,8"
                             Padding="14,10"
                             HorizontalContentAlignment="Left"
+                            Tag="ExamsRubrics"
+                            Click="Navigate_Click"
                             Content="Exams &amp; Rubrics" />
-                    <Button Margin="0,0,0,8"
+                    <Button x:Name="UploadBatchButton"
+                            Margin="0,0,0,8"
                             Padding="14,10"
                             HorizontalContentAlignment="Left"
+                            Tag="UploadBatch"
+                            Click="Navigate_Click"
                             Content="Upload Batch" />
-                    <Button Margin="0,0,0,8"
+                    <Button x:Name="ReviewScoresButton"
+                            Margin="0,0,0,8"
                             Padding="14,10"
                             HorizontalContentAlignment="Left"
                             Background="#F77F00"
                             Foreground="White"
+                            Tag="ReviewScores"
+                            Click="Navigate_Click"
                             Content="Review Scores" />
-                    <Button Margin="0,0,0,8"
+                    <Button x:Name="ReportsButton"
+                            Margin="0,0,0,8"
                             Padding="14,10"
                             HorizontalContentAlignment="Left"
+                            Tag="Reports"
+                            Click="Navigate_Click"
                             Content="Reports" />
                 </StackPanel>
 
@@ -63,7 +78,221 @@
             </DockPanel>
         </Border>
 
-        <Grid Grid.Column="1" Margin="28">
+        <Grid x:Name="DashboardView"
+              Grid.Column="1"
+              Margin="28"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="Dashboard"
+                           Foreground="#14213D"
+                           FontSize="28"
+                           FontWeight="SemiBold" />
+                <TextBlock Margin="0,5,0,0"
+                           Text="Tong quan nhanh ve he thong cham bai PE."
+                           Foreground="#667085"
+                           FontSize="14" />
+            </StackPanel>
+
+            <UniformGrid Grid.Row="1" Margin="0,24,0,18" Columns="4">
+                <Border Margin="0,0,8,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="Pending review" Foreground="#667085" />
+                        <TextBlock Text="0"
+                                   Margin="0,8,0,0"
+                                   Foreground="#14213D"
+                                   FontSize="28"
+                                   FontWeight="Bold" />
+                    </StackPanel>
+                </Border>
+                <Border Margin="4,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="AI graded" Foreground="#667085" />
+                        <TextBlock Text="0"
+                                   Margin="0,8,0,0"
+                                   Foreground="#14213D"
+                                   FontSize="28"
+                                   FontWeight="Bold" />
+                    </StackPanel>
+                </Border>
+                <Border Margin="4,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="Finalized" Foreground="#667085" />
+                        <TextBlock Text="0"
+                                   Margin="0,8,0,0"
+                                   Foreground="#18794E"
+                                   FontSize="28"
+                                   FontWeight="Bold" />
+                    </StackPanel>
+                </Border>
+                <Border Margin="8,0,0,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="Gateway" Foreground="#667085" />
+                        <TextBlock Text="localhost:5000"
+                                   Margin="0,8,0,0"
+                                   Foreground="#14213D"
+                                   FontSize="16"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Border Grid.Row="2" Padding="22" Background="White" CornerRadius="10">
+                <StackPanel>
+                    <TextBlock Text="Next step"
+                               Foreground="#14213D"
+                               FontSize="18"
+                               FontWeight="SemiBold" />
+                    <TextBlock Margin="0,10,0,0"
+                               Text="Man hinh nay se hien thong ke batch, so bai can cham lai, va canh bao quota API."
+                               Foreground="#667085"
+                               FontSize="14"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ExamsRubricsView"
+              Grid.Column="1"
+              Margin="28"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="Exams &amp; Rubrics"
+                           Foreground="#14213D"
+                           FontSize="28"
+                           FontWeight="SemiBold" />
+                <TextBlock Margin="0,5,0,0"
+                           Text="Quan ly de PE va tieu chi cham diem."
+                           Foreground="#667085"
+                           FontSize="14" />
+            </StackPanel>
+
+            <Border Grid.Row="1"
+                    Margin="0,24,0,0"
+                    Padding="22"
+                    Background="White"
+                    CornerRadius="10">
+                <StackPanel>
+                    <TextBlock Text="Rubric setup"
+                               Foreground="#14213D"
+                               FontSize="18"
+                               FontWeight="SemiBold" />
+                    <TextBlock Margin="0,10,0,18"
+                               Text="Sau nay Teacher se nhap rubric/criteria tai day. AI se dua vao cac tieu chi nay de cham bai."
+                               Foreground="#667085"
+                               FontSize="14"
+                               TextWrapping="Wrap" />
+                    <DataGrid AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              HeadersVisibility="Column"
+                              MinHeight="280">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Width="2*" Header="Criterion" />
+                            <DataGridTextColumn Width="100" Header="Max score" />
+                            <DataGridTextColumn Width="3*" Header="Description" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="UploadBatchView"
+              Grid.Column="1"
+              Margin="28"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="Upload Batch"
+                           Foreground="#14213D"
+                           FontSize="28"
+                           FontWeight="SemiBold" />
+                <TextBlock Margin="0,5,0,0"
+                           Text="Upload file DOCX/PDF bai lam de Document Processing tach text, bang va hinh."
+                           Foreground="#667085"
+                           FontSize="14" />
+            </StackPanel>
+
+            <Border Grid.Row="1"
+                    Margin="0,24,0,0"
+                    Padding="22"
+                    Background="White"
+                    CornerRadius="10">
+                <StackPanel>
+                    <TextBlock Text="Batch input"
+                               Foreground="#14213D"
+                               FontSize="18"
+                               FontWeight="SemiBold" />
+                    <Border Margin="0,18,0,0"
+                            Padding="28"
+                            BorderBrush="#D0D5DD"
+                            BorderThickness="1"
+                            Background="#F9FAFB"
+                            CornerRadius="8">
+                        <TextBlock Text="Drop file area placeholder - se noi voi Submission Service va Document Processing Service."
+                                   Foreground="#667085"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ReportsView"
+              Grid.Column="1"
+              Margin="28"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="Reports"
+                           Foreground="#14213D"
+                           FontSize="28"
+                           FontWeight="SemiBold" />
+                <TextBlock Margin="0,5,0,0"
+                           Text="Bao cao diem, audit log va export."
+                           Foreground="#667085"
+                           FontSize="14" />
+            </StackPanel>
+
+            <Border Grid.Row="1"
+                    Margin="0,24,0,0"
+                    Padding="22"
+                    Background="White"
+                    CornerRadius="10">
+                <StackPanel>
+                    <TextBlock Text="Report center"
+                               Foreground="#14213D"
+                               FontSize="18"
+                               FontWeight="SemiBold" />
+                    <TextBlock Margin="0,10,0,0"
+                               Text="Sau nay man hinh nay dung de xem do lech AI/Teacher, export Excel/PDF va tra cuu audit log."
+                               Foreground="#667085"
+                               FontSize="14"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ReviewScoresView"
+              Grid.Column="1"
+              Margin="28">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
