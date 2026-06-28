@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     };
 
     private readonly ObservableCollection<CriterionReviewRow> _criteria = [];
+    private readonly ObservableCollection<UserAccountResponse> _users = [];
     private readonly Dictionary<object, string> _localizedObjects = [];
     private readonly Dictionary<DataGridColumn, string> _localizedColumns = [];
     private ScoreComparisonResponse? _currentScore;
@@ -41,13 +42,19 @@ public partial class MainWindow : Window
     private static readonly IReadOnlyDictionary<string, string> InitialTextKeys =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["Admin Console"] = "App.AdminConsole",
             ["Teacher Desktop"] = "App.TeacherDesktop",
+            ["Teacher Workspace"] = "App.TeacherWorkspace",
+            ["Assigned submissions only"] = "App.AssignedOnly",
             ["Not signed in"] = "User.NotSignedIn",
             ["Language"] = "App.Language",
             ["Dashboard"] = "Nav.Dashboard",
+            ["User Management"] = "Nav.UserManagement",
             ["Exams & Rubrics"] = "Nav.ExamsRubrics",
             ["Exams &amp; Rubrics"] = "Nav.ExamsRubrics",
             ["Upload Batch"] = "Nav.UploadBatch",
+            ["Assignments"] = "Nav.Assignments",
+            ["My Assignments"] = "Nav.MyAssignments",
             ["Review Scores"] = "Nav.ReviewScores",
             ["Reports"] = "Nav.Reports",
             ["Logout"] = "Nav.Logout",
@@ -96,19 +103,56 @@ public partial class MainWindow : Window
             ["Email"] = "Login.Email",
             ["Password"] = "Login.Password",
             ["Seed users: admin@fptu.edu.vn / Admin@123, teacher.swt@fptu.edu.vn / Teacher@123"] = "Login.SeedUsers",
-            ["Login"] = "Login.Button"
+            ["Login"] = "Login.Button",
+            ["Grading Assignments"] = "Assignments.Title",
+            ["Assign submissions by subject and workload to teachers."] = "Assignments.Description",
+            ["Unassigned"] = "Assignments.Unassigned",
+            ["Assigned"] = "Assignments.Assigned",
+            ["Completed"] = "Assignments.Completed",
+            ["Assignment management"] = "Assignments.Management",
+            ["Select an exam batch, filter teachers by subject, then distribute submissions equally or assign them manually."] = "Assignments.ManagementDescription",
+            ["Create assignment"] = "Assignments.Create",
+            ["Only submissions assigned to this teacher are shown here."] = "TeacherAssignments.Description",
+            ["Waiting"] = "TeacherAssignments.Waiting",
+            ["In progress"] = "TeacherAssignments.InProgress",
+            ["Assigned submissions"] = "TeacherAssignments.List",
+            ["Choose an assigned submission and open the review workspace to verify the AI score."] = "TeacherAssignments.ListDescription",
+            ["Open review workspace"] = "TeacherAssignments.OpenReview",
+            ["Create and manage Admin and Teacher accounts."] = "Users.Description",
+            ["Refresh"] = "Users.Refresh",
+            ["Full name"] = "Users.FullName",
+            ["Role"] = "Users.Role",
+            ["Subject"] = "Users.Subject",
+            ["Active"] = "Users.Active",
+            ["Last login"] = "Users.LastLogin",
+            ["Enable / Disable"] = "Users.ToggleStatus",
+            ["New password"] = "Users.NewPassword",
+            ["Reset password"] = "Users.ResetPassword",
+            ["Select one account before changing its status."] = "Users.SelectHint",
+            ["Create account"] = "Users.CreateAccount",
+            ["Subject code"] = "Users.SubjectCode",
+            ["Create user"] = "Users.CreateUser",
+            ["User data is managed by Identity Service."] = "Users.ManagedByIdentity",
+            ["Teacher"] = "Users.Teacher",
+            ["Admin"] = "Users.Admin"
         };
 
     private static readonly IReadOnlyDictionary<string, LocalizedText> Texts =
         new Dictionary<string, LocalizedText>(StringComparer.Ordinal)
         {
+            ["App.AdminConsole"] = new("Khu vực quản trị", "Admin Console"),
             ["App.TeacherDesktop"] = new("Ứng dụng giảng viên", "Teacher Desktop"),
+            ["App.TeacherWorkspace"] = new("Khu vực giảng viên", "Teacher Workspace"),
+            ["App.AssignedOnly"] = new("Chỉ hiển thị bài được phân công", "Assigned submissions only"),
             ["App.Language"] = new("Ngôn ngữ", "Language"),
             ["User.NotSignedIn"] = new("Chưa đăng nhập", "Not signed in"),
             ["User.Role"] = new("Vai trò", "Role"),
             ["Nav.Dashboard"] = new("Tổng quan", "Dashboard"),
+            ["Nav.UserManagement"] = new("Quản lý người dùng", "User Management"),
             ["Nav.ExamsRubrics"] = new("Đề thi & Rubric", "Exams & Rubrics"),
             ["Nav.UploadBatch"] = new("Upload bài thi", "Upload Batch"),
+            ["Nav.Assignments"] = new("Phân công chấm", "Assignments"),
+            ["Nav.MyAssignments"] = new("Bài được phân công", "My Assignments"),
             ["Nav.ReviewScores"] = new("Chấm lại điểm", "Review Scores"),
             ["Nav.Reports"] = new("Báo cáo", "Reports"),
             ["Nav.Logout"] = new("Đăng xuất", "Logout"),
@@ -174,6 +218,46 @@ public partial class MainWindow : Window
             ["Login.Invalid"] = new("Sai email hoặc mật khẩu.", "Invalid email or password."),
             ["Login.EmptyResponse"] = new("Identity API trả về dữ liệu rỗng.", "Identity API returned an empty response."),
             ["Login.SuccessFormat"] = new("Đã đăng nhập: {0} ({1}).", "Signed in: {0} ({1})."),
+            ["Assignments.Title"] = new("Phân công chấm bài", "Grading Assignments"),
+            ["Assignments.Description"] = new("Phân bài cho giảng viên theo môn phụ trách và khối lượng công việc.", "Assign submissions by subject and workload to teachers."),
+            ["Assignments.Unassigned"] = new("Chưa phân công", "Unassigned"),
+            ["Assignments.Assigned"] = new("Đã phân công", "Assigned"),
+            ["Assignments.Completed"] = new("Đã hoàn thành", "Completed"),
+            ["Assignments.Management"] = new("Quản lý phân công", "Assignment management"),
+            ["Assignments.ManagementDescription"] = new("Chọn batch bài thi, lọc giảng viên theo môn rồi chia đều hoặc phân công thủ công.", "Select an exam batch, filter teachers by subject, then distribute submissions equally or assign them manually."),
+            ["Assignments.Create"] = new("Tạo phân công", "Create assignment"),
+            ["TeacherAssignments.Description"] = new("Chỉ những bài được phân cho giảng viên này mới xuất hiện tại đây.", "Only submissions assigned to this teacher are shown here."),
+            ["TeacherAssignments.Waiting"] = new("Đang chờ", "Waiting"),
+            ["TeacherAssignments.InProgress"] = new("Đang chấm", "In progress"),
+            ["TeacherAssignments.List"] = new("Danh sách bài được giao", "Assigned submissions"),
+            ["TeacherAssignments.ListDescription"] = new("Chọn một bài được giao và mở khu vực chấm để kiểm tra điểm AI.", "Choose an assigned submission and open the review workspace to verify the AI score."),
+            ["TeacherAssignments.OpenReview"] = new("Mở màn hình chấm", "Open review workspace"),
+            ["Users.Description"] = new("Tạo và quản lý tài khoản Admin và giảng viên.", "Create and manage Admin and Teacher accounts."),
+            ["Users.Refresh"] = new("Làm mới", "Refresh"),
+            ["Users.FullName"] = new("Họ tên", "Full name"),
+            ["Users.Role"] = new("Vai trò", "Role"),
+            ["Users.Subject"] = new("Môn", "Subject"),
+            ["Users.Active"] = new("Hoạt động", "Active"),
+            ["Users.LastLogin"] = new("Đăng nhập gần nhất", "Last login"),
+            ["Users.ToggleStatus"] = new("Khóa / Mở khóa", "Enable / Disable"),
+            ["Users.NewPassword"] = new("Mật khẩu mới", "New password"),
+            ["Users.ResetPassword"] = new("Đặt lại mật khẩu", "Reset password"),
+            ["Users.SelectHint"] = new("Chọn một tài khoản trước khi đổi trạng thái.", "Select one account before changing its status."),
+            ["Users.CreateAccount"] = new("Tạo tài khoản", "Create account"),
+            ["Users.SubjectCode"] = new("Mã môn phụ trách", "Subject code"),
+            ["Users.CreateUser"] = new("Tạo người dùng", "Create user"),
+            ["Users.ManagedByIdentity"] = new("Dữ liệu tài khoản được quản lý bởi Identity Service.", "User data is managed by Identity Service."),
+            ["Users.Teacher"] = new("Giảng viên", "Teacher"),
+            ["Users.Admin"] = new("Quản trị", "Admin"),
+            ["Users.LoadedFormat"] = new("Đã tải {0} tài khoản.", "Loaded {0} accounts."),
+            ["Users.Created"] = new("Đã tạo tài khoản mới.", "User account created."),
+            ["Users.StatusUpdated"] = new("Đã cập nhật trạng thái tài khoản.", "User status updated."),
+            ["Users.Required"] = new("Nhập đủ họ tên, email và mật khẩu tối thiểu 8 ký tự.", "Enter full name, email, and a password of at least 8 characters."),
+            ["Users.SubjectRequired"] = new("Teacher phải có mã môn phụ trách.", "A teacher must have a subject code."),
+            ["Users.SelectUser"] = new("Chọn một tài khoản trước nha bro.", "Select an account first."),
+            ["Users.CannotDisableSelf"] = new("Không thể tự khóa tài khoản Admin đang đăng nhập.", "You cannot disable the currently signed-in admin account."),
+            ["Users.PasswordReset"] = new("Đã đặt lại mật khẩu.", "Password reset successfully."),
+            ["Users.PasswordRequired"] = new("Mật khẩu mới phải có ít nhất 8 ký tự.", "The new password must contain at least 8 characters."),
             ["Grid.Criterion"] = new("Tiêu chí", "Criterion"),
             ["Grid.Max"] = new("Tối đa", "Max"),
             ["Grid.AI"] = new("AI", "AI"),
@@ -191,9 +275,9 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         CriteriaGrid.ItemsSource = _criteria;
+        UsersGrid.ItemsSource = _users;
         InitializeLocalization();
         LanguageComboBox.SelectedIndex = 0;
-        ShowView("ReviewScores");
     }
 
     private void InitializeLocalization()
@@ -207,6 +291,12 @@ public partial class MainWindow : Window
         RegisterColumn(RubricCriteriaGrid.Columns[0], "Grid.Criterion");
         RegisterColumn(RubricCriteriaGrid.Columns[1], "Grid.MaxScore");
         RegisterColumn(RubricCriteriaGrid.Columns[2], "Grid.Description");
+        RegisterColumn(UsersGrid.Columns[0], "Users.FullName");
+        RegisterColumn(UsersGrid.Columns[1], "Login.Email");
+        RegisterColumn(UsersGrid.Columns[2], "Users.Role");
+        RegisterColumn(UsersGrid.Columns[3], "Users.Subject");
+        RegisterColumn(UsersGrid.Columns[4], "Users.Active");
+        RegisterColumn(UsersGrid.Columns[5], "Users.LastLogin");
     }
 
     private void RegisterLocalizedObjects(DependencyObject root)
@@ -332,11 +422,18 @@ public partial class MainWindow : Window
             RenderCurrentUser();
             LoginView.Visibility = Visibility.Collapsed;
             AppShell.Visibility = Visibility.Visible;
-            ShowView(_currentUser.Role == UserRole.Admin.ToString()
-                ? "Dashboard"
-                : "ReviewScores");
+            AdminNavigationShell.Visibility = IsAdmin
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            TeacherNavigationShell.Visibility = IsTeacher
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            ShowView(IsAdmin ? "Dashboard" : "TeacherDashboard");
             ResetReviewScreen();
-            await LoadCredentialStatusAsync();
+            if (IsTeacher)
+            {
+                await LoadCredentialStatusAsync();
+            }
             ShowMessage(string.Format(
                 T("Login.SuccessFormat"),
                 _currentUser.FullName,
@@ -376,10 +473,22 @@ public partial class MainWindow : Window
 
     private void RenderCurrentUser()
     {
-        CurrentUserTextBlock.Text = _currentUser is null
+        var userText = _currentUser is null
             ? T("User.NotSignedIn")
             : $"{_currentUser.FullName}\n{_currentUser.Email}\n{T("User.Role")}: {_currentUser.Role}";
+        CurrentUserTextBlock.Text = userText;
+        TeacherCurrentUserTextBlock.Text = userText;
     }
+
+    private bool IsAdmin => string.Equals(
+        _currentUser?.Role,
+        UserRole.Admin.ToString(),
+        StringComparison.OrdinalIgnoreCase);
+
+    private bool IsTeacher => string.Equals(
+        _currentUser?.Role,
+        UserRole.Teacher.ToString(),
+        StringComparison.OrdinalIgnoreCase);
 
     private void ShowLoginMessage(string message, bool isError = true)
     {
@@ -389,23 +498,45 @@ public partial class MainWindow : Window
             : Brushes.DimGray;
     }
 
-    private void Navigate_Click(object sender, RoutedEventArgs e)
+    private async void Navigate_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: string viewName })
         {
             ShowView(viewName);
+            if (viewName == "UserManagement" && IsAdmin)
+            {
+                await LoadUsersAsync();
+            }
         }
     }
 
     private void ShowView(string viewName)
     {
+        var allowed = IsAdmin
+            ? viewName is "Dashboard" or "UserManagement" or "ExamsRubrics" or "UploadBatch" or "Assignments" or "Reports"
+            : IsTeacher && (viewName is "TeacherDashboard" or "ReviewScores");
+
+        if (!allowed)
+        {
+            return;
+        }
+
         DashboardView.Visibility = viewName == "Dashboard"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        UserManagementView.Visibility = viewName == "UserManagement"
             ? Visibility.Visible
             : Visibility.Collapsed;
         ExamsRubricsView.Visibility = viewName == "ExamsRubrics"
             ? Visibility.Visible
             : Visibility.Collapsed;
         UploadBatchView.Visibility = viewName == "UploadBatch"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        AssignmentsView.Visibility = viewName == "Assignments"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        TeacherDashboardView.Visibility = viewName == "TeacherDashboard"
             ? Visibility.Visible
             : Visibility.Collapsed;
         ReviewScoresView.Visibility = viewName == "ReviewScores"
@@ -418,8 +549,11 @@ public partial class MainWindow : Window
         var activeButton = viewName switch
         {
             "Dashboard" => DashboardButton,
+            "UserManagement" => UsersButton,
             "ExamsRubrics" => ExamsRubricsButton,
             "UploadBatch" => UploadBatchButton,
+            "Assignments" => AssignmentsButton,
+            "TeacherDashboard" => TeacherDashboardButton,
             "ReviewScores" => ReviewScoresButton,
             "Reports" => ReportsButton,
             _ => ReviewScoresButton
@@ -428,8 +562,11 @@ public partial class MainWindow : Window
         foreach (var button in new[]
         {
             DashboardButton,
+            UsersButton,
             ExamsRubricsButton,
             UploadBatchButton,
+            AssignmentsButton,
+            TeacherDashboardButton,
             ReviewScoresButton,
             ReportsButton
         })
@@ -442,6 +579,184 @@ public partial class MainWindow : Window
                 ? ActiveNavigationForeground
                 : InactiveNavigationForeground;
         }
+    }
+
+    private async void RefreshUsers_Click(object sender, RoutedEventArgs e) =>
+        await LoadUsersAsync();
+
+    private async Task LoadUsersAsync()
+    {
+        if (!IsAdmin)
+        {
+            return;
+        }
+
+        await ExecuteUserManagementAsync(async () =>
+        {
+            var users = await _httpClient.GetFromJsonAsync<List<UserAccountResponse>>(
+                "users/") ?? [];
+
+            _users.Clear();
+            foreach (var user in users)
+            {
+                _users.Add(user);
+            }
+
+            ShowUserManagementMessage(string.Format(T("Users.LoadedFormat"), _users.Count));
+        });
+    }
+
+    private async void CreateUser_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(NewUserFullNameTextBox.Text) ||
+            string.IsNullOrWhiteSpace(NewUserEmailTextBox.Text) ||
+            NewUserPasswordBox.Password.Length < 8)
+        {
+            ShowUserManagementMessage(T("Users.Required"), isError: true);
+            return;
+        }
+
+        var role = GetSelectedNewUserRole();
+        if (role == UserRole.Teacher &&
+            string.IsNullOrWhiteSpace(NewUserSubjectTextBox.Text))
+        {
+            ShowUserManagementMessage(T("Users.SubjectRequired"), isError: true);
+            return;
+        }
+
+        await ExecuteUserManagementAsync(async () =>
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                "users/",
+                new CreateUserRequest(
+                    NewUserEmailTextBox.Text.Trim(),
+                    NewUserFullNameTextBox.Text.Trim(),
+                    NewUserPasswordBox.Password,
+                    role,
+                    role == UserRole.Teacher
+                        ? NewUserSubjectTextBox.Text.Trim().ToUpperInvariant()
+                        : null));
+            await EnsureSuccessAsync(response);
+
+            NewUserFullNameTextBox.Clear();
+            NewUserEmailTextBox.Clear();
+            NewUserPasswordBox.Clear();
+            NewUserSubjectTextBox.Clear();
+            NewUserRoleComboBox.SelectedIndex = 0;
+            await LoadUsersCoreAsync();
+            ShowUserManagementMessage(T("Users.Created"));
+        });
+    }
+
+    private async void ToggleUserStatus_Click(object sender, RoutedEventArgs e)
+    {
+        if (UsersGrid.SelectedItem is not UserAccountResponse selectedUser)
+        {
+            ShowUserManagementMessage(T("Users.SelectUser"), isError: true);
+            return;
+        }
+
+        if (selectedUser.UserId == CurrentUserId && selectedUser.IsActive)
+        {
+            ShowUserManagementMessage(T("Users.CannotDisableSelf"), isError: true);
+            return;
+        }
+
+        await ExecuteUserManagementAsync(async () =>
+        {
+            var response = await _httpClient.PatchAsJsonAsync(
+                $"users/{selectedUser.UserId}/status",
+                new SetUserStatusRequest(!selectedUser.IsActive));
+            await EnsureSuccessAsync(response);
+            await LoadUsersCoreAsync();
+            ShowUserManagementMessage(T("Users.StatusUpdated"));
+        });
+    }
+
+    private async void ResetUserPassword_Click(object sender, RoutedEventArgs e)
+    {
+        if (UsersGrid.SelectedItem is not UserAccountResponse selectedUser)
+        {
+            ShowUserManagementMessage(T("Users.SelectUser"), isError: true);
+            return;
+        }
+
+        if (ResetUserPasswordBox.Password.Length < 8)
+        {
+            ShowUserManagementMessage(T("Users.PasswordRequired"), isError: true);
+            return;
+        }
+
+        await ExecuteUserManagementAsync(async () =>
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"users/{selectedUser.UserId}/reset-password",
+                new ResetUserPasswordRequest(ResetUserPasswordBox.Password));
+            await EnsureSuccessAsync(response);
+            ResetUserPasswordBox.Clear();
+            ShowUserManagementMessage(T("Users.PasswordReset"));
+        });
+    }
+
+    private void NewUserRole_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (NewUserSubjectLabel is null || NewUserSubjectTextBox is null)
+        {
+            return;
+        }
+
+        var visibility = GetSelectedNewUserRole() == UserRole.Teacher
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        NewUserSubjectLabel.Visibility = visibility;
+        NewUserSubjectTextBox.Visibility = visibility;
+    }
+
+    private UserRole GetSelectedNewUserRole()
+    {
+        if (NewUserRoleComboBox.SelectedItem is ComboBoxItem { Tag: string role } &&
+            Enum.TryParse<UserRole>(role, ignoreCase: true, out var parsedRole))
+        {
+            return parsedRole;
+        }
+
+        return UserRole.Teacher;
+    }
+
+    private async Task LoadUsersCoreAsync()
+    {
+        var users = await _httpClient.GetFromJsonAsync<List<UserAccountResponse>>(
+            "users/") ?? [];
+        _users.Clear();
+        foreach (var user in users)
+        {
+            _users.Add(user);
+        }
+    }
+
+    private async Task ExecuteUserManagementAsync(Func<Task> action)
+    {
+        try
+        {
+            UserManagementView.IsEnabled = false;
+            await action();
+        }
+        catch (Exception exception)
+        {
+            ShowUserManagementMessage(exception.Message, isError: true);
+        }
+        finally
+        {
+            UserManagementView.IsEnabled = true;
+        }
+    }
+
+    private void ShowUserManagementMessage(string message, bool isError = false)
+    {
+        UserManagementMessageTextBlock.Text = message;
+        UserManagementMessageTextBlock.Foreground = isError
+            ? Brushes.Firebrick
+            : Brushes.DimGray;
     }
 
     private async void SaveApiKey_Click(object sender, RoutedEventArgs e)

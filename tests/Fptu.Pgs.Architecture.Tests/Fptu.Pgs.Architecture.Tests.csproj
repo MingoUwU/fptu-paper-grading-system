@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BuildingBlocks\Fptu.Pgs.Contracts\Fptu.Pgs.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Services\AiGrading\Fptu.Pgs.AiGrading.Api\Fptu.Pgs.AiGrading.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\Identity\Fptu.Pgs.Identity.Api\Fptu.Pgs.Identity.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\ReviewScore\Fptu.Pgs.ReviewScore.Api\Fptu.Pgs.ReviewScore.Api.csproj" />
   </ItemGroup>
 

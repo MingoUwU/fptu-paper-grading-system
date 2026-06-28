@@ -13,6 +13,32 @@ public sealed record LoginResponse(
 
 public sealed record RefreshTokenRequest(string RefreshToken);
 
+public sealed record UserAccountResponse(
+    Guid UserId,
+    string Email,
+    string FullName,
+    UserRole Role,
+    string? SubjectCode,
+    bool IsActive,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset? LastLoginAtUtc);
+
+public sealed record CreateUserRequest(
+    string Email,
+    string FullName,
+    string Password,
+    UserRole Role,
+    string? SubjectCode);
+
+public sealed record UpdateUserRequest(
+    string FullName,
+    UserRole Role,
+    string? SubjectCode);
+
+public sealed record SetUserStatusRequest(bool IsActive);
+
+public sealed record ResetUserPasswordRequest(string NewPassword);
+
 public sealed record CreateExamRequest(
     string Code,
     string Name,

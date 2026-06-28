@@ -17,7 +17,10 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="#14213D">
+        <Border x:Name="AdminNavigationShell"
+                Grid.Column="0"
+                Background="#14213D"
+                Visibility="Collapsed">
             <DockPanel Margin="20">
                 <StackPanel DockPanel.Dock="Top">
                     <TextBlock Text="FPTU PGS"
@@ -25,7 +28,7 @@
                                FontSize="24"
                                FontWeight="Bold" />
                     <TextBlock Margin="0,4,0,28"
-                               Text="Teacher Desktop"
+                               Text="Admin Console"
                                Foreground="#B8C4DD"
                                FontSize="13" />
                     <TextBlock x:Name="CurrentUserTextBlock"
@@ -42,6 +45,13 @@
                             Tag="Dashboard"
                             Click="Navigate_Click"
                             Content="Dashboard" />
+                    <Button x:Name="UsersButton"
+                            Margin="0,0,0,8"
+                            Padding="14,10"
+                            HorizontalContentAlignment="Left"
+                            Tag="UserManagement"
+                            Click="Navigate_Click"
+                            Content="User Management" />
                     <Button x:Name="ExamsRubricsButton"
                             Margin="0,0,0,8"
                             Padding="14,10"
@@ -56,15 +66,13 @@
                             Tag="UploadBatch"
                             Click="Navigate_Click"
                             Content="Upload Batch" />
-                    <Button x:Name="ReviewScoresButton"
+                    <Button x:Name="AssignmentsButton"
                             Margin="0,0,0,8"
                             Padding="14,10"
                             HorizontalContentAlignment="Left"
-                            Background="#F77F00"
-                            Foreground="White"
-                            Tag="ReviewScores"
+                            Tag="Assignments"
                             Click="Navigate_Click"
-                            Content="Review Scores" />
+                            Content="Assignments" />
                     <Button x:Name="ReportsButton"
                             Margin="0,0,0,8"
                             Padding="14,10"
@@ -81,6 +89,62 @@
                     <StackPanel>
                         <TextBlock Text="API Gateway" Foreground="#B8C4DD" FontSize="11" />
                         <TextBlock Text="http://localhost:5000" Foreground="White" FontSize="12" />
+                        <Button Margin="0,12,0,0"
+                                Padding="12,8"
+                                HorizontalContentAlignment="Center"
+                                Background="#E5E7EB"
+                                Foreground="#111827"
+                                Click="Logout_Click"
+                                Content="Logout" />
+                    </StackPanel>
+                </Border>
+            </DockPanel>
+        </Border>
+
+        <Border x:Name="TeacherNavigationShell"
+                Grid.Column="0"
+                Background="#20345D"
+                Visibility="Collapsed">
+            <DockPanel Margin="20">
+                <StackPanel DockPanel.Dock="Top">
+                    <TextBlock Text="FPTU PGS"
+                               Foreground="White"
+                               FontSize="24"
+                               FontWeight="Bold" />
+                    <TextBlock Margin="0,4,0,28"
+                               Text="Teacher Workspace"
+                               Foreground="#C7D3EA"
+                               FontSize="13" />
+                    <TextBlock x:Name="TeacherCurrentUserTextBlock"
+                               Margin="0,0,0,16"
+                               Text="Not signed in"
+                               Foreground="#E5ECF8"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+
+                    <Button x:Name="TeacherDashboardButton"
+                            Margin="0,0,0,8"
+                            Padding="14,10"
+                            HorizontalContentAlignment="Left"
+                            Tag="TeacherDashboard"
+                            Click="Navigate_Click"
+                            Content="My Assignments" />
+                    <Button x:Name="ReviewScoresButton"
+                            Margin="0,0,0,8"
+                            Padding="14,10"
+                            HorizontalContentAlignment="Left"
+                            Tag="ReviewScores"
+                            Click="Navigate_Click"
+                            Content="Review Scores" />
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom"
+                        Padding="12"
+                        Background="#14213D"
+                        CornerRadius="8">
+                    <StackPanel>
+                        <TextBlock Text="Teacher Workspace" Foreground="#B8C4DD" FontSize="11" />
+                        <TextBlock Text="Assigned submissions only" Foreground="White" FontSize="12" />
                         <Button Margin="0,12,0,0"
                                 Padding="12,8"
                                 HorizontalContentAlignment="Center"
@@ -170,6 +234,155 @@
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
+        </Grid>
+
+        <Grid x:Name="UserManagementView"
+              Grid.Column="1"
+              Margin="28"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <DockPanel LastChildFill="False">
+                <StackPanel>
+                    <TextBlock Text="User Management"
+                               Foreground="#14213D"
+                               FontSize="28"
+                               FontWeight="SemiBold" />
+                    <TextBlock Margin="0,5,0,0"
+                               Text="Create and manage Admin and Teacher accounts."
+                               Foreground="#667085"
+                               FontSize="14" />
+                </StackPanel>
+                <Button DockPanel.Dock="Right"
+                        Width="110"
+                        Margin="0,0,185,0"
+                        Padding="16,9"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Click="RefreshUsers_Click"
+                        Content="Refresh" />
+            </DockPanel>
+
+            <Grid Grid.Row="1" Margin="0,24,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="360" />
+                </Grid.ColumnDefinitions>
+
+                <Border Margin="0,0,10,0"
+                        Padding="16"
+                        Background="White"
+                        CornerRadius="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <DataGrid x:Name="UsersGrid"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  IsReadOnly="True"
+                                  SelectionMode="Single"
+                                  HeadersVisibility="Column"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  RowHeaderWidth="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Width="210" Header="Full name" Binding="{Binding FullName}" />
+                                <DataGridTextColumn Width="220" Header="Email" Binding="{Binding Email}" />
+                                <DataGridTextColumn Width="90" Header="Role" Binding="{Binding Role}" />
+                                <DataGridTextColumn Width="80" Header="Subject" Binding="{Binding SubjectCode}" />
+                                <DataGridCheckBoxColumn Width="85" Header="Active" Binding="{Binding IsActive}" />
+                                <DataGridTextColumn Width="140" Header="Last login" Binding="{Binding LastLoginAtUtc, StringFormat=g}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <WrapPanel Grid.Row="1"
+                                   Margin="0,14,0,0"
+                                   VerticalAlignment="Center">
+                            <Button Padding="16,8"
+                                    Background="#344054"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Click="ToggleUserStatus_Click"
+                                    Content="Enable / Disable" />
+                            <TextBlock Margin="12,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Text="Select one account before changing its status."
+                                       Foreground="#667085" />
+                            <TextBlock Margin="18,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Text="New password"
+                                       Foreground="#344054" />
+                            <PasswordBox x:Name="ResetUserPasswordBox"
+                                         Width="130"
+                                         Margin="8,0,0,0"
+                                         Padding="8,6" />
+                            <Button Margin="8,0,0,0"
+                                    Padding="14,8"
+                                    Click="ResetUserPassword_Click"
+                                    Content="Reset password" />
+                        </WrapPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1"
+                        Margin="10,0,0,0"
+                        Padding="20"
+                        Background="White"
+                        CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="Create account"
+                                   Foreground="#14213D"
+                                   FontSize="18"
+                                   FontWeight="SemiBold" />
+
+                        <TextBlock Margin="0,18,0,0" Text="Full name" Foreground="#344054" />
+                        <TextBox x:Name="NewUserFullNameTextBox" Margin="0,6,0,0" Padding="10,8" />
+
+                        <TextBlock Margin="0,14,0,0" Text="Email" Foreground="#344054" />
+                        <TextBox x:Name="NewUserEmailTextBox" Margin="0,6,0,0" Padding="10,8" />
+
+                        <TextBlock Margin="0,14,0,0" Text="Password" Foreground="#344054" />
+                        <PasswordBox x:Name="NewUserPasswordBox" Margin="0,6,0,0" Padding="10,8" />
+
+                        <TextBlock Margin="0,14,0,0" Text="Role" Foreground="#344054" />
+                        <ComboBox x:Name="NewUserRoleComboBox"
+                                  Margin="0,6,0,0"
+                                  Padding="8"
+                                  SelectionChanged="NewUserRole_SelectionChanged">
+                            <ComboBoxItem Tag="Teacher" Content="Teacher" IsSelected="True" />
+                            <ComboBoxItem Tag="Admin" Content="Admin" />
+                        </ComboBox>
+
+                        <TextBlock x:Name="NewUserSubjectLabel"
+                                   Margin="0,14,0,0"
+                                   Text="Subject code"
+                                   Foreground="#344054" />
+                        <TextBox x:Name="NewUserSubjectTextBox"
+                                 Margin="0,6,0,0"
+                                 Padding="10,8"
+                                 CharacterCasing="Upper" />
+
+                        <Button Margin="0,22,0,0"
+                                Padding="16,10"
+                                Background="#F77F00"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="CreateUser_Click"
+                                Content="Create user" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <TextBlock x:Name="UserManagementMessageTextBlock"
+                       Grid.Row="2"
+                       Margin="0,14,0,0"
+                       Foreground="#667085"
+                       Text="User data is managed by Identity Service." />
         </Grid>
 
         <Grid x:Name="ExamsRubricsView"
@@ -267,6 +480,70 @@
             </Border>
         </Grid>
 
+        <Grid x:Name="AssignmentsView"
+              Grid.Column="1"
+              Margin="28"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="Grading Assignments"
+                           Foreground="#14213D"
+                           FontSize="28"
+                           FontWeight="SemiBold" />
+                <TextBlock Margin="0,5,0,0"
+                           Text="Assign submissions by subject and workload to teachers."
+                           Foreground="#667085"
+                           FontSize="14" />
+            </StackPanel>
+
+            <UniformGrid Grid.Row="1" Margin="0,24,0,18" Columns="3">
+                <Border Margin="0,0,8,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="Unassigned" Foreground="#667085" />
+                        <TextBlock Text="0" Margin="0,8,0,0" FontSize="28" FontWeight="Bold" Foreground="#B54708" />
+                    </StackPanel>
+                </Border>
+                <Border Margin="4,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="Assigned" Foreground="#667085" />
+                        <TextBlock Text="0" Margin="0,8,0,0" FontSize="28" FontWeight="Bold" Foreground="#14213D" />
+                    </StackPanel>
+                </Border>
+                <Border Margin="8,0,0,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="Completed" Foreground="#667085" />
+                        <TextBlock Text="0" Margin="0,8,0,0" FontSize="28" FontWeight="Bold" Foreground="#18794E" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Border Grid.Row="2" Padding="22" Background="White" CornerRadius="10">
+                <StackPanel>
+                    <TextBlock Text="Assignment management"
+                               Foreground="#14213D"
+                               FontSize="18"
+                               FontWeight="SemiBold" />
+                    <TextBlock Margin="0,10,0,18"
+                               Text="Select an exam batch, filter teachers by subject, then distribute submissions equally or assign them manually."
+                               Foreground="#667085"
+                               TextWrapping="Wrap" />
+                    <Button Width="190"
+                            Padding="16,10"
+                            HorizontalAlignment="Left"
+                            Background="#F77F00"
+                            Foreground="White"
+                            BorderThickness="0"
+                            IsEnabled="False"
+                            Content="Create assignment" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
         <Grid x:Name="ReportsView"
               Grid.Column="1"
               Margin="28"
@@ -306,9 +583,75 @@
             </Border>
         </Grid>
 
+        <Grid x:Name="TeacherDashboardView"
+              Grid.Column="1"
+              Margin="28"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="My Assignments"
+                           Foreground="#14213D"
+                           FontSize="28"
+                           FontWeight="SemiBold" />
+                <TextBlock Margin="0,5,0,0"
+                           Text="Only submissions assigned to this teacher are shown here."
+                           Foreground="#667085"
+                           FontSize="14" />
+            </StackPanel>
+
+            <UniformGrid Grid.Row="1" Margin="0,24,0,18" Columns="3">
+                <Border Margin="0,0,8,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="Waiting" Foreground="#667085" />
+                        <TextBlock Text="0" Margin="0,8,0,0" FontSize="28" FontWeight="Bold" Foreground="#B54708" />
+                    </StackPanel>
+                </Border>
+                <Border Margin="4,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="In progress" Foreground="#667085" />
+                        <TextBlock Text="0" Margin="0,8,0,0" FontSize="28" FontWeight="Bold" Foreground="#14213D" />
+                    </StackPanel>
+                </Border>
+                <Border Margin="8,0,0,0" Padding="18" Background="White" CornerRadius="10">
+                    <StackPanel>
+                        <TextBlock Text="Completed" Foreground="#667085" />
+                        <TextBlock Text="0" Margin="0,8,0,0" FontSize="28" FontWeight="Bold" Foreground="#18794E" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Border Grid.Row="2" Padding="22" Background="White" CornerRadius="10">
+                <StackPanel>
+                    <TextBlock Text="Assigned submissions"
+                               Foreground="#14213D"
+                               FontSize="18"
+                               FontWeight="SemiBold" />
+                    <TextBlock Margin="0,10,0,18"
+                               Text="Choose an assigned submission and open the review workspace to verify the AI score."
+                               Foreground="#667085"
+                               TextWrapping="Wrap" />
+                    <Button Width="190"
+                            Padding="16,10"
+                            HorizontalAlignment="Left"
+                            Background="#F77F00"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Tag="ReviewScores"
+                            Click="Navigate_Click"
+                            Content="Open review workspace" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
         <Grid x:Name="ReviewScoresView"
               Grid.Column="1"
-              Margin="28">
+              Margin="28"
+              Visibility="Collapsed">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
