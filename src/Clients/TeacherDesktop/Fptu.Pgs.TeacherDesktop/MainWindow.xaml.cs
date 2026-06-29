@@ -1,11 +1,14 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Fptu.Pgs.Contracts;
+using Microsoft.Win32;
 
 namespace Fptu.Pgs.TeacherDesktop;
 
@@ -22,10 +25,14 @@ public partial class MainWindow : Window
 
     private readonly ObservableCollection<CriterionReviewRow> _criteria = [];
     private readonly ObservableCollection<UserAccountResponse> _users = [];
+    private readonly ObservableCollection<ExamSummaryResponse> _exams = [];
+    private readonly ObservableCollection<RubricCriterionEditorRow> _rubricCriteria = [];
     private readonly Dictionary<object, string> _localizedObjects = [];
     private readonly Dictionary<DataGridColumn, string> _localizedColumns = [];
     private ScoreComparisonResponse? _currentScore;
     private LoginResponse? _currentUser;
+    private ExamSummaryResponse? _selectedExam;
+    private bool _suppressExamSelection;
     private string _language = VietnameseLanguage;
 
     private static readonly Brush ActiveNavigationBackground =
@@ -52,6 +59,23 @@ public partial class MainWindow : Window
             ["User Management"] = "Nav.UserManagement",
             ["Exams & Rubrics"] = "Nav.ExamsRubrics",
             ["Exams &amp; Rubrics"] = "Nav.ExamsRubrics",
+            ["Import an existing PE exam and define the rubric used by AI."] = "Exams.ImportDescription",
+            ["Import existing exam"] = "Exams.ImportTitle",
+            ["Exam code"] = "Exams.Code",
+            ["Exam name"] = "Exams.Name",
+            ["Semester"] = "Exams.Semester",
+            ["Exam file (DOCX/PDF)"] = "Exams.File",
+            ["Browse"] = "Exams.Browse",
+            ["Import exam"] = "Exams.Import",
+            ["Imported exams"] = "Exams.List",
+            ["Rubric criteria"] = "Exams.RubricCriteria",
+            ["Select an imported exam to edit its rubric."] = "Exams.SelectHint",
+            ["AI instructions"] = "Exams.AiInstructions",
+            ["Add criterion"] = "Exams.AddCriterion",
+            ["Remove selected"] = "Exams.RemoveCriterion",
+            ["Save draft"] = "Exams.SaveDraft",
+            ["Publish rubric"] = "Exams.Publish",
+            ["Import an exam, add criteria, save the draft, then publish it for AI grading."] = "Exams.WorkflowHint",
             ["Upload Batch"] = "Nav.UploadBatch",
             ["Assignments"] = "Nav.Assignments",
             ["My Assignments"] = "Nav.MyAssignments",
@@ -164,6 +188,34 @@ public partial class MainWindow : Window
             ["Dashboard.NextStep"] = new("Bước tiếp theo", "Next step"),
             ["Dashboard.NextStepDescription"] = new("Màn hình này sẽ hiển thị thống kê batch, số bài cần chấm lại và cảnh báo quota API.", "This screen will show batch statistics, pending review counts, and API quota alerts."),
             ["Exams.Description"] = new("Quản lý đề PE và tiêu chí chấm điểm.", "Manage PE exams and grading criteria."),
+            ["Exams.ImportDescription"] = new("Nhập đề PE đã có và thiết lập rubric để AI sử dụng khi chấm.", "Import an existing PE exam and define the rubric used by AI."),
+            ["Exams.ImportTitle"] = new("Nhập đề thi có sẵn", "Import existing exam"),
+            ["Exams.Code"] = new("Mã đề", "Exam code"),
+            ["Exams.Name"] = new("Tên đề thi", "Exam name"),
+            ["Exams.Semester"] = new("Học kỳ", "Semester"),
+            ["Exams.File"] = new("File đề thi (DOCX/PDF)", "Exam file (DOCX/PDF)"),
+            ["Exams.Browse"] = new("Chọn file", "Browse"),
+            ["Exams.Import"] = new("Nhập đề thi", "Import exam"),
+            ["Exams.List"] = new("Danh sách đề thi", "Imported exams"),
+            ["Exams.RubricCriteria"] = new("Tiêu chí chấm", "Rubric criteria"),
+            ["Exams.SelectHint"] = new("Chọn một đề thi để chỉnh sửa rubric.", "Select an imported exam to edit its rubric."),
+            ["Exams.AiInstructions"] = new("Hướng dẫn cho AI", "AI instructions"),
+            ["Exams.AddCriterion"] = new("Thêm tiêu chí", "Add criterion"),
+            ["Exams.RemoveCriterion"] = new("Xóa tiêu chí chọn", "Remove selected"),
+            ["Exams.SaveDraft"] = new("Lưu bản nháp", "Save draft"),
+            ["Exams.Publish"] = new("Publish rubric", "Publish rubric"),
+            ["Exams.WorkflowHint"] = new("Nhập đề thi, thêm tiêu chí, lưu bản nháp rồi publish để AI chấm theo rubric này.", "Import an exam, add criteria, save the draft, then publish it for AI grading."),
+            ["Exams.TotalFormat"] = new("Tổng điểm: {0:0.##}", "Total: {0:0.##}"),
+            ["Exams.SelectedFormat"] = new("{0} — {1} | {2}", "{0} — {1} | {2}"),
+            ["Exams.ImportRequired"] = new("Nhập đủ mã đề, tên đề, môn, học kỳ và chọn file DOCX/PDF.", "Enter the exam code, name, subject, semester, and select a DOCX/PDF file."),
+            ["Exams.Imported"] = new("Đã nhập đề thi. Bây giờ hãy thêm tiêu chí chấm.", "Exam imported. Now add grading criteria."),
+            ["Exams.LoadedFormat"] = new("Đã tải {0} đề thi.", "Loaded {0} exams."),
+            ["Exams.SelectFirst"] = new("Chọn một đề thi trước nha bro.", "Select an exam first."),
+            ["Exams.CriterionRequired"] = new("Mỗi tiêu chí cần tên, mô tả, hướng dẫn AI và điểm tối đa lớn hơn 0.", "Every criterion needs a name, description, AI instructions, and a positive maximum score."),
+            ["Exams.Saved"] = new("Đã lưu rubric dạng bản nháp.", "Rubric draft saved."),
+            ["Exams.Published"] = new("Đã publish rubric. AI có thể dùng tiêu chí này để chấm.", "Rubric published. AI can now grade with these criteria."),
+            ["Exams.StatusDraft"] = new("Bản nháp", "Draft"),
+            ["Exams.StatusPublished"] = new("Đã publish", "Published"),
             ["Exams.RubricSetup"] = new("Thiết lập rubric", "Rubric setup"),
             ["Exams.RubricDescription"] = new("Sau này giảng viên sẽ nhập rubric/criteria tại đây. AI sẽ dựa vào các tiêu chí này để chấm bài.", "Teachers will enter rubrics/criteria here. AI will grade submissions based on these criteria."),
             ["Upload.Description"] = new("Upload file DOCX/PDF bài làm để Document Processing tách text, bảng và hình.", "Upload DOCX/PDF submissions so Document Processing can extract text, tables, and images."),
@@ -237,6 +289,7 @@ public partial class MainWindow : Window
             ["Users.FullName"] = new("Họ tên", "Full name"),
             ["Users.Role"] = new("Vai trò", "Role"),
             ["Users.Subject"] = new("Môn", "Subject"),
+            ["Users.Status"] = new("Trạng thái", "Status"),
             ["Users.Active"] = new("Hoạt động", "Active"),
             ["Users.LastLogin"] = new("Đăng nhập gần nhất", "Last login"),
             ["Users.ToggleStatus"] = new("Khóa / Mở khóa", "Enable / Disable"),
@@ -276,6 +329,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         CriteriaGrid.ItemsSource = _criteria;
         UsersGrid.ItemsSource = _users;
+        ExamListGrid.ItemsSource = _exams;
+        RubricCriteriaGrid.ItemsSource = _rubricCriteria;
         InitializeLocalization();
         LanguageComboBox.SelectedIndex = 0;
     }
@@ -288,9 +343,13 @@ public partial class MainWindow : Window
         RegisterColumn(CriteriaGrid.Columns[2], "Grid.AI");
         RegisterColumn(CriteriaGrid.Columns[3], "Grid.Teacher");
         RegisterColumn(CriteriaGrid.Columns[4], "Grid.TeacherFeedback");
-        RegisterColumn(RubricCriteriaGrid.Columns[0], "Grid.Criterion");
-        RegisterColumn(RubricCriteriaGrid.Columns[1], "Grid.MaxScore");
-        RegisterColumn(RubricCriteriaGrid.Columns[2], "Grid.Description");
+        RegisterColumn(ExamListGrid.Columns[0], "Exams.Code");
+        RegisterColumn(ExamListGrid.Columns[1], "Exams.Name");
+        RegisterColumn(ExamListGrid.Columns[2], "Users.Status");
+        RegisterColumn(RubricCriteriaGrid.Columns[1], "Grid.Criterion");
+        RegisterColumn(RubricCriteriaGrid.Columns[2], "Grid.MaxScore");
+        RegisterColumn(RubricCriteriaGrid.Columns[3], "Grid.Description");
+        RegisterColumn(RubricCriteriaGrid.Columns[4], "Exams.AiInstructions");
         RegisterColumn(UsersGrid.Columns[0], "Users.FullName");
         RegisterColumn(UsersGrid.Columns[1], "Login.Email");
         RegisterColumn(UsersGrid.Columns[2], "Users.Role");
@@ -355,6 +414,8 @@ public partial class MainWindow : Window
             AiCredentialSourceTextBlock.Text = $"{T("Score.ApiPrefix")}: {T("Common.Dash")}";
             StatusTextBlock.Text = T("Status.NotLoaded");
         }
+
+        UpdateRubricHeader();
     }
 
     private string T(string key)
@@ -507,6 +568,10 @@ public partial class MainWindow : Window
             {
                 await LoadUsersAsync();
             }
+            else if (viewName == "ExamsRubrics" && IsAdmin)
+            {
+                await LoadExamsAsync();
+            }
         }
     }
 
@@ -579,6 +644,354 @@ public partial class MainWindow : Window
                 ? ActiveNavigationForeground
                 : InactiveNavigationForeground;
         }
+    }
+
+    private async void RefreshExams_Click(object sender, RoutedEventArgs e) =>
+        await LoadExamsAsync();
+
+    private async Task LoadExamsAsync()
+    {
+        if (!IsAdmin)
+        {
+            return;
+        }
+
+        await ExecuteExamRubricAsync(async () =>
+        {
+            await LoadExamsCoreAsync(_selectedExam?.ExamId);
+            ShowExamRubricMessage(string.Format(T("Exams.LoadedFormat"), _exams.Count));
+        });
+    }
+
+    private async Task LoadExamsCoreAsync(Guid? preferredExamId = null)
+    {
+        var exams = await _httpClient.GetFromJsonAsync<List<ExamSummaryResponse>>(
+            "exams/") ?? [];
+
+        _suppressExamSelection = true;
+        try
+        {
+            _exams.Clear();
+            foreach (var exam in exams)
+            {
+                _exams.Add(exam);
+            }
+
+            var selected = preferredExamId.HasValue
+                ? _exams.FirstOrDefault(x => x.ExamId == preferredExamId.Value)
+                : _exams.FirstOrDefault();
+            ExamListGrid.SelectedItem = selected;
+            _selectedExam = selected;
+        }
+        finally
+        {
+            _suppressExamSelection = false;
+        }
+
+        if (_selectedExam is not null)
+        {
+            await LoadSelectedRubricCoreAsync();
+        }
+        else
+        {
+            _rubricCriteria.Clear();
+            UpdateRubricHeader();
+        }
+    }
+
+    private void BrowseExamFile_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = T("Exams.File"),
+            Filter = "Exam documents (*.docx;*.pdf)|*.docx;*.pdf|Word documents (*.docx)|*.docx|PDF documents (*.pdf)|*.pdf",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            ExamFilePathTextBox.Text = dialog.FileName;
+        }
+    }
+
+    private async void ImportExam_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(ExamCodeTextBox.Text) ||
+            string.IsNullOrWhiteSpace(ExamNameTextBox.Text) ||
+            string.IsNullOrWhiteSpace(ExamSubjectTextBox.Text) ||
+            string.IsNullOrWhiteSpace(ExamSemesterTextBox.Text) ||
+            string.IsNullOrWhiteSpace(ExamFilePathTextBox.Text) ||
+            !File.Exists(ExamFilePathTextBox.Text))
+        {
+            ShowExamRubricMessage(T("Exams.ImportRequired"), isError: true);
+            return;
+        }
+
+        await ExecuteExamRubricAsync(async () =>
+        {
+            await using var fileStream = File.OpenRead(ExamFilePathTextBox.Text);
+            using var form = new MultipartFormDataContent();
+            form.Add(new StringContent(ExamCodeTextBox.Text.Trim()), "code");
+            form.Add(new StringContent(ExamNameTextBox.Text.Trim()), "name");
+            form.Add(new StringContent(ExamSubjectTextBox.Text.Trim()), "subjectCode");
+            form.Add(new StringContent(ExamSemesterTextBox.Text.Trim()), "semester");
+            form.Add(new StringContent(CurrentUserId.ToString()), "createdByAdminId");
+
+            using var fileContent = new StreamContent(fileStream);
+            var extension = Path.GetExtension(ExamFilePathTextBox.Text);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(
+                extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase)
+                    ? "application/pdf"
+                    : "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            form.Add(fileContent, "file", Path.GetFileName(ExamFilePathTextBox.Text));
+
+            var response = await _httpClient.PostAsync("exams/import", form);
+            await EnsureSuccessAsync(response);
+            var importedExam = await response.Content.ReadFromJsonAsync<ExamSummaryResponse>()
+                ?? throw new InvalidOperationException(T("Login.EmptyResponse"));
+
+            ExamCodeTextBox.Clear();
+            ExamNameTextBox.Clear();
+            ExamFilePathTextBox.Clear();
+            await LoadExamsCoreAsync(importedExam.ExamId);
+            ShowExamRubricMessage(T("Exams.Imported"));
+        });
+    }
+
+    private async void ExamList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressExamSelection ||
+            ExamListGrid.SelectedItem is not ExamSummaryResponse exam)
+        {
+            return;
+        }
+
+        _selectedExam = exam;
+        await ExecuteExamRubricAsync(LoadSelectedRubricCoreAsync);
+    }
+
+    private async Task LoadSelectedRubricCoreAsync()
+    {
+        if (_selectedExam is null)
+        {
+            return;
+        }
+
+        var rubric = await _httpClient.GetFromJsonAsync<ExamRubricResponse>(
+            $"exams/{_selectedExam.ExamId}/rubric")
+            ?? throw new InvalidOperationException(T("Login.EmptyResponse"));
+        RenderRubric(rubric);
+    }
+
+    private void AddRubricCriterion_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedExam is null)
+        {
+            ShowExamRubricMessage(T("Exams.SelectFirst"), isError: true);
+            return;
+        }
+
+        var row = new RubricCriterionEditorRow
+        {
+            DisplayOrder = _rubricCriteria.Count + 1,
+            MaxScore = 1m
+        };
+        _rubricCriteria.Add(row);
+        RubricCriteriaGrid.SelectedItem = row;
+        RubricCriteriaGrid.ScrollIntoView(row);
+        UpdateRubricHeader();
+    }
+
+    private void RemoveRubricCriterion_Click(object sender, RoutedEventArgs e)
+    {
+        if (RubricCriteriaGrid.SelectedItem is not RubricCriterionEditorRow row)
+        {
+            return;
+        }
+
+        _rubricCriteria.Remove(row);
+        NormalizeRubricOrder();
+        UpdateRubricHeader();
+    }
+
+    private async void SaveRubric_Click(object sender, RoutedEventArgs e)
+    {
+        await ExecuteExamRubricAsync(async () =>
+        {
+            await SaveRubricCoreAsync();
+            ShowExamRubricMessage(T("Exams.Saved"));
+        });
+    }
+
+    private async void PublishRubric_Click(object sender, RoutedEventArgs e)
+    {
+        await ExecuteExamRubricAsync(async () =>
+        {
+            await SaveRubricCoreAsync();
+            var response = await _httpClient.PostAsync(
+                $"exams/{_selectedExam!.ExamId}/rubric/publish",
+                null);
+            await EnsureSuccessAsync(response);
+            var rubric = await response.Content.ReadFromJsonAsync<ExamRubricResponse>()
+                ?? throw new InvalidOperationException(T("Login.EmptyResponse"));
+            RenderRubric(rubric);
+            UpdateSelectedExamSummary(rubric);
+            ShowExamRubricMessage(T("Exams.Published"));
+        });
+    }
+
+    private async Task SaveRubricCoreAsync()
+    {
+        if (_selectedExam is null)
+        {
+            throw new InvalidOperationException(T("Exams.SelectFirst"));
+        }
+
+        RubricCriteriaGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+        RubricCriteriaGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        NormalizeRubricOrder();
+
+        if (_rubricCriteria.Count == 0 || _rubricCriteria.Any(x =>
+            string.IsNullOrWhiteSpace(x.Name) ||
+            string.IsNullOrWhiteSpace(x.Description) ||
+            string.IsNullOrWhiteSpace(x.AiInstructions) ||
+            x.MaxScore <= 0))
+        {
+            throw new InvalidOperationException(T("Exams.CriterionRequired"));
+        }
+
+        var request = new SaveExamRubricRequest(
+            _rubricCriteria.Select(x => new UpsertRubricCriterionRequest(
+                x.CriterionId,
+                x.Name,
+                x.Description,
+                x.AiInstructions,
+                x.MaxScore,
+                x.DisplayOrder)).ToArray());
+        var response = await _httpClient.PutAsJsonAsync(
+            $"exams/{_selectedExam.ExamId}/rubric",
+            request);
+        await EnsureSuccessAsync(response);
+        var rubric = await response.Content.ReadFromJsonAsync<ExamRubricResponse>()
+            ?? throw new InvalidOperationException(T("Login.EmptyResponse"));
+        RenderRubric(rubric);
+        UpdateSelectedExamSummary(rubric);
+    }
+
+    private void RubricCriteriaGrid_CellEditEnding(
+        object sender,
+        DataGridCellEditEndingEventArgs e) =>
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Background,
+            new Action(() => UpdateRubricHeader()));
+
+    private void RenderRubric(ExamRubricResponse rubric)
+    {
+        _rubricCriteria.Clear();
+        foreach (var criterion in rubric.Criteria.OrderBy(x => x.DisplayOrder))
+        {
+            _rubricCriteria.Add(new RubricCriterionEditorRow
+            {
+                CriterionId = criterion.CriterionId,
+                Name = criterion.Name,
+                Description = criterion.Description,
+                AiInstructions = criterion.AiInstructions,
+                MaxScore = criterion.MaxScore,
+                DisplayOrder = criterion.DisplayOrder
+            });
+        }
+
+        UpdateRubricHeader(rubric.Status);
+    }
+
+    private void UpdateSelectedExamSummary(ExamRubricResponse rubric)
+    {
+        if (_selectedExam is null)
+        {
+            return;
+        }
+
+        var index = _exams.IndexOf(_selectedExam);
+        var updated = _selectedExam with
+        {
+            RubricStatus = rubric.Status,
+            CriterionCount = rubric.Criteria.Count,
+            TotalScore = rubric.TotalScore,
+            PublishedAtUtc = rubric.PublishedAtUtc
+        };
+
+        _suppressExamSelection = true;
+        try
+        {
+            if (index >= 0)
+            {
+                _exams[index] = updated;
+            }
+            _selectedExam = updated;
+            ExamListGrid.SelectedItem = updated;
+        }
+        finally
+        {
+            _suppressExamSelection = false;
+        }
+        UpdateRubricHeader(rubric.Status);
+    }
+
+    private void NormalizeRubricOrder()
+    {
+        for (var index = 0; index < _rubricCriteria.Count; index++)
+        {
+            _rubricCriteria[index].DisplayOrder = index + 1;
+        }
+        RubricCriteriaGrid.Items.Refresh();
+    }
+
+    private void UpdateRubricHeader(RubricStatus? status = null)
+    {
+        var total = _rubricCriteria.Sum(x => x.MaxScore);
+        RubricTotalTextBlock.Text = string.Format(T("Exams.TotalFormat"), total);
+
+        if (_selectedExam is null)
+        {
+            SelectedExamTextBlock.Text = T("Exams.SelectHint");
+            return;
+        }
+
+        var currentStatus = status ?? _selectedExam.RubricStatus;
+        var statusText = currentStatus == RubricStatus.Published
+            ? T("Exams.StatusPublished")
+            : T("Exams.StatusDraft");
+        SelectedExamTextBlock.Text = string.Format(
+            T("Exams.SelectedFormat"),
+            _selectedExam.Code,
+            _selectedExam.Name,
+            statusText);
+    }
+
+    private async Task ExecuteExamRubricAsync(Func<Task> action)
+    {
+        try
+        {
+            ExamsRubricsView.IsEnabled = false;
+            await action();
+        }
+        catch (Exception exception)
+        {
+            ShowExamRubricMessage(exception.Message, isError: true);
+        }
+        finally
+        {
+            ExamsRubricsView.IsEnabled = true;
+        }
+    }
+
+    private void ShowExamRubricMessage(string message, bool isError = false)
+    {
+        ExamRubricMessageTextBlock.Text = message;
+        ExamRubricMessageTextBlock.Foreground = isError
+            ? Brushes.Firebrick
+            : Brushes.DimGray;
     }
 
     private async void RefreshUsers_Click(object sender, RoutedEventArgs e) =>
@@ -1037,5 +1450,15 @@ public partial class MainWindow : Window
         public decimal AiScore { get; init; }
         public decimal TeacherScore { get; set; }
         public string TeacherFeedback { get; set; } = string.Empty;
+    }
+
+    private sealed class RubricCriterionEditorRow
+    {
+        public Guid? CriterionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string AiInstructions { get; set; } = string.Empty;
+        public decimal MaxScore { get; set; }
+        public int DisplayOrder { get; set; }
     }
 }

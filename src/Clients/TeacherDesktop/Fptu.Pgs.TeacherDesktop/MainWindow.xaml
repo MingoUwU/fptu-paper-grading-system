@@ -391,7 +391,9 @@
               Visibility="Collapsed">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <StackPanel>
@@ -400,39 +402,193 @@
                            FontSize="28"
                            FontWeight="SemiBold" />
                 <TextBlock Margin="0,5,0,0"
-                           Text="Quan ly de PE va tieu chi cham diem."
+                           Text="Import an existing PE exam and define the rubric used by AI."
                            Foreground="#667085"
                            FontSize="14" />
             </StackPanel>
 
             <Border Grid.Row="1"
-                    Margin="0,24,0,0"
-                    Padding="22"
+                    Margin="0,20,0,16"
+                    Padding="16"
                     Background="White"
                     CornerRadius="10">
                 <StackPanel>
-                    <TextBlock Text="Rubric setup"
-                               Foreground="#14213D"
-                               FontSize="18"
-                               FontWeight="SemiBold" />
-                    <TextBlock Margin="0,10,0,18"
-                               Text="Sau nay Teacher se nhap rubric/criteria tai day. AI se dua vao cac tieu chi nay de cham bai."
-                               Foreground="#667085"
-                               FontSize="14"
-                               TextWrapping="Wrap" />
-                    <DataGrid x:Name="RubricCriteriaGrid"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False"
-                              HeadersVisibility="Column"
-                              MinHeight="280">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Width="2*" Header="Criterion" />
-                            <DataGridTextColumn Width="100" Header="Max score" />
-                            <DataGridTextColumn Width="3*" Header="Description" />
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <DockPanel LastChildFill="False">
+                        <TextBlock Text="Import existing exam"
+                                   Foreground="#14213D"
+                                   FontSize="17"
+                                   FontWeight="SemiBold" />
+                        <Button DockPanel.Dock="Right"
+                                Width="100"
+                                Margin="0,0,185,0"
+                                Padding="12,7"
+                                Click="RefreshExams_Click"
+                                Content="Refresh" />
+                    </DockPanel>
+
+                    <WrapPanel Margin="0,14,0,0">
+                        <StackPanel Width="105" Margin="0,0,10,0">
+                            <TextBlock Text="Exam code" Foreground="#344054" />
+                            <TextBox x:Name="ExamCodeTextBox" Margin="0,5,0,0" Padding="8,6" CharacterCasing="Upper" />
+                        </StackPanel>
+                        <StackPanel Width="230" Margin="0,0,10,0">
+                            <TextBlock Text="Exam name" Foreground="#344054" />
+                            <TextBox x:Name="ExamNameTextBox" Margin="0,5,0,0" Padding="8,6" />
+                        </StackPanel>
+                        <StackPanel Width="100" Margin="0,0,10,0">
+                            <TextBlock Text="Subject code" Foreground="#344054" />
+                            <TextBox x:Name="ExamSubjectTextBox" Margin="0,5,0,0" Padding="8,6" CharacterCasing="Upper" />
+                        </StackPanel>
+                        <StackPanel Width="105" Margin="0,0,10,0">
+                            <TextBlock Text="Semester" Foreground="#344054" />
+                            <TextBox x:Name="ExamSemesterTextBox" Margin="0,5,0,0" Padding="8,6" CharacterCasing="Upper" />
+                        </StackPanel>
+                        <StackPanel Width="275" Margin="0,0,10,0">
+                            <TextBlock Text="Exam file (DOCX/PDF)" Foreground="#344054" />
+                            <DockPanel Margin="0,5,0,0" LastChildFill="True">
+                                <Button DockPanel.Dock="Right"
+                                        Width="75"
+                                        Margin="8,0,0,0"
+                                        Click="BrowseExamFile_Click"
+                                        Content="Browse" />
+                                <TextBox x:Name="ExamFilePathTextBox"
+                                         Padding="8,6"
+                                         IsReadOnly="True" />
+                            </DockPanel>
+                        </StackPanel>
+                        <Button Width="125"
+                                Height="32"
+                                Margin="0,20,0,0"
+                                Background="#F77F00"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="ImportExam_Click"
+                                Content="Import exam" />
+                    </WrapPanel>
                 </StackPanel>
             </Border>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="330" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Margin="0,0,10,0"
+                        Padding="14"
+                        Background="White"
+                        CornerRadius="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Imported exams"
+                                   Foreground="#14213D"
+                                   FontSize="17"
+                                   FontWeight="SemiBold" />
+                        <DataGrid x:Name="ExamListGrid"
+                                  Grid.Row="1"
+                                  Margin="0,12,0,0"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  IsReadOnly="True"
+                                  SelectionMode="Single"
+                                  RowHeaderWidth="0"
+                                  SelectionChanged="ExamList_SelectionChanged">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Width="80" Header="Code" Binding="{Binding Code}" />
+                                <DataGridTextColumn Width="*" Header="Name" Binding="{Binding Name}" />
+                                <DataGridTextColumn Width="75" Header="Status" Binding="{Binding RubricStatus}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1"
+                        Margin="10,0,0,0"
+                        Padding="14"
+                        Background="White"
+                        CornerRadius="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <DockPanel LastChildFill="False">
+                            <StackPanel>
+                                <TextBlock Text="Rubric criteria"
+                                           Foreground="#14213D"
+                                           FontSize="17"
+                                           FontWeight="SemiBold" />
+                                <TextBlock x:Name="SelectedExamTextBlock"
+                                           Margin="0,4,0,0"
+                                           Text="Select an imported exam to edit its rubric."
+                                           Foreground="#667085" />
+                            </StackPanel>
+                            <TextBlock x:Name="RubricTotalTextBlock"
+                                       DockPanel.Dock="Right"
+                                       VerticalAlignment="Center"
+                                       Text="Total: 0"
+                                       Foreground="#14213D"
+                                       FontWeight="SemiBold" />
+                        </DockPanel>
+
+                        <DataGrid x:Name="RubricCriteriaGrid"
+                                  Grid.Row="1"
+                                  Margin="0,12,0,12"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  HeadersVisibility="Column"
+                                  RowHeaderWidth="0"
+                                  CellEditEnding="RubricCriteriaGrid_CellEditEnding">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Width="55" Header="#" IsReadOnly="True" Binding="{Binding DisplayOrder}" />
+                                <DataGridTextColumn Width="140" Header="Criterion" Binding="{Binding Name}" />
+                                <DataGridTextColumn Width="75" Header="Max score" Binding="{Binding MaxScore}" />
+                                <DataGridTextColumn Width="2*" Header="Description" Binding="{Binding Description}" />
+                                <DataGridTextColumn Width="2*" Header="AI instructions" Binding="{Binding AiInstructions}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <DockPanel Grid.Row="2" LastChildFill="False">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Padding="14,8"
+                                        Click="AddRubricCriterion_Click"
+                                        Content="Add criterion" />
+                                <Button Margin="8,0,0,0"
+                                        Padding="14,8"
+                                        Foreground="Firebrick"
+                                        Click="RemoveRubricCriterion_Click"
+                                        Content="Remove selected" />
+                            </StackPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Padding="16,8"
+                                        Background="#344054"
+                                        Foreground="White"
+                                        BorderThickness="0"
+                                        Click="SaveRubric_Click"
+                                        Content="Save draft" />
+                                <Button Margin="8,0,0,0"
+                                        Padding="16,8"
+                                        Background="#F77F00"
+                                        Foreground="White"
+                                        BorderThickness="0"
+                                        Click="PublishRubric_Click"
+                                        Content="Publish rubric" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <TextBlock x:Name="ExamRubricMessageTextBlock"
+                       Grid.Row="3"
+                       Margin="0,12,0,0"
+                       Foreground="#667085"
+                       Text="Import an exam, add criteria, save the draft, then publish it for AI grading." />
         </Grid>
 
         <Grid x:Name="UploadBatchView"

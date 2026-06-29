@@ -79,6 +79,13 @@ builder.Services.AddHttpClient<ReviewScoreClient>(client =>
         ?? "http://localhost:5106/");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+builder.Services.AddHttpClient<ExamRubricClient>(client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:ExamBaseUrl"]
+        ?? "http://localhost:5102/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 var app = builder.Build();
 
@@ -101,44 +108,65 @@ var grading = app.MapGroup("/grading").WithTags("AI Grading");
 
 grading.MapPost(
     "/evaluate",
-    async (
+    (
         GradeSubmissionRequest request,
         GradingExecutionService gradingExecutionService,
         AiGradingDbContext dbContext,
         ReviewScoreClient reviewScoreClient,
         CancellationToken cancellationToken) =>
-    {
-        var validationError = ValidateRequest(request);
-        if (validationError is not null)
-        {
-            return Results.BadRequest(new { message = validationError });
-        }
-
-        try
-        {
-            var providerResult = await gradingExecutionService.ExecuteAsync(
-                request,
-                cancellationToken);
-            var result = AiGradingMapper.ToEntity(request, providerResult);
-
-            dbContext.AiGradingResults.Add(result);
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            result.ReviewScoreSynchronized = await reviewScoreClient.TryRegisterAsync(
-                result.ToRegisterRequest(),
-                cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            return Results.Created(
-                $"/grading/results/{result.SubmissionId}",
-                result.ToResponse());
-        }
-        catch (InvalidOperationException exception)
-        {
-            return Results.BadRequest(new { message = exception.Message });
-        }
-    })
+        EvaluateAsync(
+            request,
+            gradingExecutionService,
+            dbContext,
+            reviewScoreClient,
+            cancellationToken))
     .WithName("EvaluateSubmission");
+
+grading.MapPost(
+    "/evaluate-from-exam",
+    async (
+        GradeSubmissionFromExamRequest request,
+        ExamRubricClient examRubricClient,
+        GradingExecutionService gradingExecutionService,
+        AiGradingDbContext dbContext,
+        ReviewScoreClient reviewScoreClient,
+        CancellationToken cancellationToken) =>
+    {
+        var rubric = await examRubricClient.GetAsync(request.ExamId, cancellationToken);
+        if (rubric is null)
+        {
+            return Results.NotFound(new { message = "Exam rubric was not found." });
+        }
+
+        if (rubric.Status != RubricStatus.Published)
+        {
+            return Results.Conflict(new
+            {
+                message = "The exam rubric must be published before AI grading."
+            });
+        }
+
+        var gradingRequest = new GradeSubmissionRequest(
+            request.SubmissionId,
+            request.ExamId,
+            request.TeacherId,
+            request.ExtractedText,
+            request.PdfBase64,
+            rubric.Criteria.Select(x => new RubricCriterionInput(
+                x.CriterionId,
+                x.Name,
+                $"{x.Description}\nAI instructions: {x.AiInstructions}",
+                x.MaxScore)).ToArray(),
+            request.Provider);
+
+        return await EvaluateAsync(
+            gradingRequest,
+            gradingExecutionService,
+            dbContext,
+            reviewScoreClient,
+            cancellationToken);
+    })
+    .WithName("EvaluateSubmissionFromPublishedExamRubric");
 
 grading.MapGet(
     "/credentials/{teacherId:guid}",
@@ -294,6 +322,44 @@ grading.MapGet(
     .WithName("GetAiSuggestionCompatibility");
 
 app.Run();
+
+static async Task<IResult> EvaluateAsync(
+    GradeSubmissionRequest request,
+    GradingExecutionService gradingExecutionService,
+    AiGradingDbContext dbContext,
+    ReviewScoreClient reviewScoreClient,
+    CancellationToken cancellationToken)
+{
+    var validationError = ValidateRequest(request);
+    if (validationError is not null)
+    {
+        return Results.BadRequest(new { message = validationError });
+    }
+
+    try
+    {
+        var providerResult = await gradingExecutionService.ExecuteAsync(
+            request,
+            cancellationToken);
+        var result = AiGradingMapper.ToEntity(request, providerResult);
+
+        dbContext.AiGradingResults.Add(result);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        result.ReviewScoreSynchronized = await reviewScoreClient.TryRegisterAsync(
+            result.ToRegisterRequest(),
+            cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Results.Created(
+            $"/grading/results/{result.SubmissionId}",
+            result.ToResponse());
+    }
+    catch (InvalidOperationException exception)
+    {
+        return Results.BadRequest(new { message = exception.Message });
+    }
+}
 
 static string? ValidateRequest(GradeSubmissionRequest request)
 {

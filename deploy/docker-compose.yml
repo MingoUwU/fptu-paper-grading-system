@@ -100,12 +100,14 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_API_KEYS: ${GOOGLE_API_KEYS}
       Services__ReviewScoreBaseUrl: http://review-score-api:8080/
+      Services__ExamBaseUrl: http://exam-api:8080/
       DataProtection__KeyRingPath: /app/.keys
     volumes:
       - ai-grading-keys:/app/.keys
     depends_on:
       - sqlserver
       - rabbitmq
+      - exam-api
 
   review-score-api:
     build:
