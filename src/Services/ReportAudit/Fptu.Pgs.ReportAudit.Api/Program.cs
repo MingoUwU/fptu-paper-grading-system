@@ -7,7 +7,7 @@ builder.Services.AddPgsServiceDefaults();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (app.Configuration.GetValue("OpenApi:Enabled", app.Environment.IsDevelopment()))
 {
     app.MapOpenApi();
 }

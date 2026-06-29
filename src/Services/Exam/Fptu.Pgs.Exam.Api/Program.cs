@@ -41,7 +41,7 @@ if (!string.Equals(
     await MigrateDatabaseAsync<ExamDbContext>(app);
 }
 
-if (app.Environment.IsDevelopment())
+if (app.Configuration.GetValue("OpenApi:Enabled", app.Environment.IsDevelopment()))
 {
     app.MapOpenApi();
 }

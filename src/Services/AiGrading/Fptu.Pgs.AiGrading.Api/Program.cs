@@ -97,7 +97,7 @@ if (!string.Equals(
     await MigrateDatabaseAsync<AiGradingDbContext>(app);
 }
 
-if (app.Environment.IsDevelopment())
+if (app.Configuration.GetValue("OpenApi:Enabled", app.Environment.IsDevelopment()))
 {
     app.MapOpenApi();
 }

@@ -48,7 +48,7 @@ if (!string.Equals(
 
 await IdentitySeeder.SeedAsync(app.Services);
 
-if (app.Environment.IsDevelopment())
+if (app.Configuration.GetValue("OpenApi:Enabled", app.Environment.IsDevelopment()))
 {
     app.MapOpenApi();
 }

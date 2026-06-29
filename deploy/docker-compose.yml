@@ -1,6 +1,7 @@
 x-api-environment: &api-environment
   ASPNETCORE_URLS: http://+:8080
   ASPNETCORE_ENVIRONMENT: Production
+  OpenApi__Enabled: "true"
   ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=PaperGardingSystem;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
   RabbitMq__Host: rabbitmq
   RabbitMq__VirtualHost: /
@@ -20,6 +21,7 @@ services:
         ASSEMBLY_NAME: Fptu.Pgs.ApiGateway
     environment:
       ASPNETCORE_URLS: http://+:8080
+      OpenApi__Enabled: "true"
     ports:
       - "5000:8080"
     depends_on:
