@@ -1,6 +1,6 @@
 # FPTU Paper Grading System
 
-FPTU Paper Grading System (FPTU PGS) là hệ thống hỗ trợ chấm bài PE trên giấy/file scan cho assignment PRN232. Hệ thống cho phép Admin quản lý tài khoản, đề thi, rubric, upload bài theo batch; AI đưa ra gợi ý điểm theo rubric; Teacher dùng ứng dụng desktop để review, chỉnh điểm và finalize kết quả cuối cùng.
+FPTU Paper Grading System (FPTU PGS) là hệ thống hỗ trợ chấm bài thi nộp dạng file văn bản (DOCX/PDF) có thể chứa ảnh sơ đồ nhúng, phục vụ assignment PRN232. Giảng viên chọn file trực tiếp từ máy local qua WPF Desktop App; hệ thống trích xuất nội dung văn bản và sơ đồ, gửi sang AI để gợi ý điểm theo rubric; Teacher review, chỉnh điểm và finalize kết quả cuối cùng.
 
 Tài liệu kiến trúc gốc: `FPTU_PGS_Assignment_System_Architecture.docx` - phiên bản 1.0, ngày 18/06/2026.
 
@@ -10,10 +10,12 @@ Tài liệu kiến trúc gốc: `FPTU_PGS_Assignment_System_Architecture.docx` -
 
 - Chỉ có 2 role: `Admin` và `Teacher`.
 - Teacher thao tác qua Desktop Tool `.exe`, không chấm trực tiếp trên web.
-- Admin import đề/rubric, upload batch bài làm và phân công bài cho Teacher.
+- Bài làm là file **DOCX hoặc PDF** do sinh viên gõ trên máy tính; có thể chứa ảnh sơ đồ (UML, ERD, flowchart...) nhúng trong file.
+- Admin chọn folder/file từ **máy local**, WPF đọc và stream nội dung lên backend — không upload lên object storage.
+- Backend trích xuất text và ảnh sơ đồ từ file; AI (Gemini) phân tích cả text lẫn sơ đồ theo rubric.
 - AI chỉ là nguồn gợi ý điểm; Teacher là người quyết định điểm cuối cùng.
 - Hỗ trợ chấm theo rubric-first JSON contract, lưu cả AI score và Teacher score để audit.
-- Backend demo qua Docker Compose với SQL Server, RabbitMQ, MinIO và các API service.
+- Backend demo qua Docker Compose với SQL Server và các API service.
 
 ## Tech Stack
 
@@ -23,10 +25,12 @@ Tài liệu kiến trúc gốc: `FPTU_PGS_Assignment_System_Architecture.docx` -
 | API Gateway | YARP Reverse Proxy, Swagger UI tổng hợp |
 | Desktop client | WPF `.NET 10 Windows` |
 | Persistence | SQL Server, EF Core Code First, schema theo bounded context |
-| Async/infra | RabbitMQ, Hangfire theo kiến trúc mục tiêu; hiện chưa nối workflow thật |
-| File storage | MinIO/local storage theo cấu hình Docker; hiện Submission/OCR còn skeleton |
-| AI provider | Mock provider, Gemini provider, system key pool, BYOK cho Teacher |
+| Document parsing | `DocumentFormat.OpenXml` (DOCX), `PdfPig` (PDF) — trích text + ảnh nhúng |
+| Background jobs | Hangfire (xử lý batch nhiều file) |
+| AI provider | Mock provider, Gemini provider (multimodal: text + ảnh sơ đồ), system key pool, BYOK cho Teacher |
 | Tests | xUnit, EF Core InMemory |
+
+> **Không dùng MinIO/object storage và không dùng RabbitMQ message broker.** File không lưu lâu dài trên server; chỉ kết quả trích xuất và điểm được persist vào SQL Server.
 
 ## Kiến Trúc Repository
 
@@ -43,8 +47,8 @@ src/
   Services/
     Identity                            # user, role, login, dev token
     Exam                                # subject, exam import, rubric
-    Submission                          # batch upload skeleton
-    DocumentProcessing                  # OCR/document extraction skeleton
+    Submission                          # nhận file stream, điều phối pipeline
+    DocumentProcessing                  # trích text + ảnh sơ đồ từ DOCX/PDF (OpenXML, PdfPig)
     AiGrading                           # mock/Gemini grading, BYOK, sync score
     ReviewScore                         # assignment, AI score, teacher grade, finalize
     ReportAudit                         # report/audit skeleton
@@ -66,32 +70,33 @@ tests/
 | API Gateway | N/A | Route toàn bộ request và gom Swagger service | Done |
 | Identity | `identity` | Login, dev token, Admin user management, seed users | In progress |
 | Exam & Rubric | `exam`, subject in-memory | Subject, import đề, lưu/publish rubric | In progress |
-| Submission | mục tiêu `submission` | Upload batch, file metadata, trạng thái đầu vào | Skeleton |
-| Document Processing | mục tiêu `ocr` | OCR/extract text, image, table từ PDF/DOCX/JPG/PNG | Skeleton |
-| AI Grading | `grading` | Chấm rubric-first bằng Mock/Gemini, lưu AI result, BYOK | In progress |
+| Submission | `submission` | Nhận IFormFile stream từ WPF, lưu metadata, điều phối DocProcessing → AI | Skeleton |
+| Document Processing | `docprocessing` | Trích text (OpenXML/PdfPig) + extract ảnh sơ đồ nhúng từ DOCX/PDF | Skeleton |
+| AI Grading | `grading` | Chấm rubric-first bằng Mock/Gemini (text + ảnh sơ đồ), lưu AI result, BYOK | In progress |
 | Review & Score | `score` | Phân công bài, teacher grade, finalize, audit score | In progress |
 | Report & Audit | mục tiêu `system` | Export Excel/PDF, audit log toàn hệ thống | Skeleton |
 | Job Status | mục tiêu `system` | Theo dõi job/submission/batch progress | Skeleton |
 | Teacher Desktop | local WPF | Admin/Teacher UI gọi Gateway | In progress |
-| Admin Panel Web | TBD | Web admin nếu nhóm cần thêm | Not started |
 
 ## Luồng Nghiệp Vụ Mục Tiêu
 
 ```text
 Admin tạo user/subject
   -> Admin import đề thi và publish rubric
-  -> Admin upload batch bài làm
-  -> Submission phát BatchUploaded
-  -> Document Processing OCR/extract nội dung
-  -> AI Grading chấm theo rubric
-  -> ReviewScore lưu AI score và tạo workload
+  -> Admin chọn folder/file DOCX/PDF từ máy local qua WPF
+  -> WPF stream file bytes -> Submission Service
+  -> Submission lưu metadata (tên file, size, examId) vào DB
+  -> Submission gọi DocumentProcessing: trích ExtractedText + DiagramImages[]
+  -> Submission gọi AI Grading: ExtractedText + DiagramImages[] + rubric -> Gemini
+  -> AI Grading lưu AI score, đồng bộ sang ReviewScore
   -> Admin phân công bài cho Teacher
-  -> Teacher review/chỉnh điểm
+  -> Teacher xem workload, review AI score và feedback
+  -> Teacher chỉnh điểm từng criterion nếu cần
   -> Teacher finalize
   -> Report/Audit xuất báo cáo và lưu lịch sử
 ```
 
-Luồng hiện tại đã chạy tốt nhất ở nhánh `Exam/Rubric -> AI evaluate -> ReviewScore register -> Teacher grade/finalize`. Các đoạn `batch upload -> OCR -> queue -> background jobs -> report export` vẫn cần hoàn thiện.
+Luồng hiện tại đã chạy tốt nhất ở nhánh `Exam/Rubric -> AI evaluate -> ReviewScore register -> Teacher grade/finalize`. Các đoạn `batch upload -> document parsing -> AI grading pipeline -> report export` vẫn cần hoàn thiện.
 
 ## Project Tracking
 
@@ -110,7 +115,7 @@ Quy ước trạng thái:
 | E1-US02 | Là developer, tôi muốn mỗi service có cấu trúc Domain/Application/Infrastructure rõ ràng. | In progress | `docs/architecture/service-structure.md`, marker folders | Tách endpoint khỏi `Program.cs` khi file lớn |
 | E1-US03 | Là client, tôi muốn gọi một Gateway duy nhất thay vì gọi từng service. | Done | `Fptu.Pgs.ApiGateway`, YARP routes | Thêm auth forwarding policy khi có JWT thật |
 | E1-US04 | Là developer, tôi muốn Swagger của các service hiển thị tập trung. | Done | Gateway Swagger UI trỏ tới `/openapi/...` | Bổ sung mô tả API chi tiết hơn |
-| E1-US05 | Là operator, tôi muốn chạy demo stack bằng Docker Compose. | In progress | `deploy/docker-compose.yml`, `deploy/start.ps1` | Health dependency sâu hơn, secret production |
+| E1-US05 | Là operator, tôi muốn chạy demo stack bằng Docker Compose. | In progress | `deploy/docker-compose.yml`, `deploy/start.ps1` | Bỏ MinIO/RabbitMQ, giữ SQL Server + các service |
 
 ### Epic 2 - Identity Và Phân Quyền
 
@@ -133,25 +138,24 @@ Quy ước trạng thái:
 | E3-US05 | Là Admin, tôi muốn publish rubric trước khi AI chấm. | Done | `POST /exams/{id}/rubric/publish` | Lock rubric hoặc tạo phiên bản sau publish |
 | E3-US06 | Là AI service, tôi muốn lấy published rubric theo exam. | Done | `GET /exams/{id}/rubric`, `evaluate-from-exam` | Cache/rate-limit service-to-service calls |
 
-### Epic 4 - Submission Batch Và File Storage
+### Epic 4 - Submission Batch Và File Pipeline
 
 | ID | User Story | Trạng thái | Bằng chứng hiện có | Việc còn lại |
 | --- | --- | --- | --- | --- |
-| E4-US01 | Là Admin, tôi muốn upload nhiều bài làm một lần. | Skeleton | `POST /batches/upload` nhận multipart và trả `BatchId` | Lưu file metadata, storage object key, submission rows |
+| E4-US01 | Là Admin, tôi muốn chọn folder/file DOCX/PDF từ máy local và nộp lên hệ thống theo batch. | Skeleton | WPF placeholder, `POST /batches/upload` nhận multipart | WPF: `OpenFileDialog`/`FolderBrowserDialog` + stream bytes; Backend: lưu metadata vào DB |
 | E4-US02 | Là Admin/Teacher, tôi muốn xem danh sách submission trong batch. | Skeleton | `GET /batches/{id}` trả dữ liệu giả | DB query thật, paging/filter |
-| E4-US03 | Là hệ thống, tôi muốn lưu trạng thái từng submission. | Not started | `SubmissionStatus` contract | Bảng `Submissions`, `StatusHistory` |
-| E4-US04 | Là hệ thống, tôi muốn phát event `BatchUploaded`. | Not started | event contracts trong BuildingBlocks | RabbitMQ publisher/idempotency |
-| E4-US05 | Là operator, tôi muốn file lưu ở MinIO/local storage. | Not started | Compose có MinIO config | Storage adapter, bucket init, cleanup |
+| E4-US03 | Là hệ thống, tôi muốn lưu metadata từng submission (tên file, loại, trạng thái). | Not started | `SubmissionStatus` contract | Bảng `Submissions`, `Batches`, EF migration schema `submission` |
+| E4-US04 | Là hệ thống, tôi muốn điều phối pipeline: DocProcessing → AI Grading → ReviewScore cho từng file. | Not started | flow mô tả trong docs | Hangfire job per submission hoặc sync pipeline cho batch nhỏ |
 
-### Epic 5 - OCR / Document Processing
+### Epic 5 - Document Processing (Trích Xuất Văn Bản Và Sơ Đồ)
 
 | ID | User Story | Trạng thái | Bằng chứng hiện có | Việc còn lại |
 | --- | --- | --- | --- | --- |
-| E5-US01 | Là hệ thống, tôi muốn tạo OCR job cho từng submission. | Skeleton | `POST /ocr/jobs` trả accepted | Hangfire job thật, persisted job state |
-| E5-US02 | Là hệ thống, tôi muốn trích text từ PDF/DOCX/JPG/PNG. | Not started | kiến trúc mô tả OpenXML/OCR | Implement extractor, OCR provider, file size policy |
-| E5-US03 | Là AI service, tôi muốn lấy extracted text/images theo submission. | Skeleton | `GET /ocr/results/{submissionId}` trả empty result | Persist OCRResult, text blocks, image refs |
-| E5-US04 | Là hệ thống, tôi muốn phát `OCRCompleted/OCRFailed`. | Not started | event names trong docs/contracts | RabbitMQ consumer/publisher + retry |
-| E5-US05 | Là Teacher/Admin, tôi muốn thấy lỗi OCR rõ ràng. | Not started | JobStatus skeleton | Error model, UI display, manual retry |
+| E5-US01 | Là hệ thống, tôi muốn trích text từ file DOCX (văn bản, bảng, tiêu đề). | Skeleton | `POST /ocr/jobs` placeholder | Implement `DocxTextExtractor` dùng `DocumentFormat.OpenXml` |
+| E5-US02 | Là hệ thống, tôi muốn trích text từ file PDF (kể cả bảng, code). | Not started | kiến trúc mô tả PdfPig | Implement `PdfTextExtractor` dùng `PdfPig` |
+| E5-US03 | Là hệ thống, tôi muốn extract ảnh sơ đồ nhúng trong DOCX/PDF (PNG/JPG). | Not started | chưa có | Extract `ImagePart` từ OpenXml; extract XObject image từ PdfPig |
+| E5-US04 | Là AI service, tôi muốn lấy `ExtractedText` và `DiagramImages[]` theo submission. | Skeleton | `GET /ocr/results/{submissionId}` trả empty result | Persist `DocumentExtractionResult`, trả base64 ảnh cho AI Grading |
+| E5-US05 | Là Teacher/Admin, tôi muốn thấy lỗi trích xuất rõ ràng (file lỗi, không đọc được). | Not started | JobStatus skeleton | Error model, UI display, file validation (size, format) |
 
 ### Epic 6 - AI Grading
 
@@ -161,9 +165,10 @@ Quy ước trạng thái:
 | E6-US02 | Là hệ thống, tôi muốn chấm từ published exam rubric. | Done | `POST /grading/evaluate-from-exam` | Tối ưu service-to-service resiliency |
 | E6-US03 | Là developer, tôi muốn dùng Mock provider để demo ổn định. | Done | `MockGradingProvider` | Dữ liệu mock sát rubric/demo hơn |
 | E6-US04 | Là hệ thống, tôi muốn dùng Gemini khi có API key. | In progress | `GeminiGradingProvider`, `AI_PROVIDER`, `GOOGLE_API_KEY(S)` | Quan sát quota, structured error mapping |
-| E6-US05 | Là Teacher, tôi muốn dùng API key Gemini cá nhân. | Done | credential endpoints, Data Protection, tests | Lấy `TeacherId` từ JWT thay vì client gửi |
-| E6-US06 | Là hệ thống, tôi muốn fallback qua pool system key. | Done | `SystemApiKeyPool`, retry tests | Thêm metrics/quota dashboard |
-| E6-US07 | Là ReviewScore, tôi muốn nhận AI grade tự động sau khi chấm. | In progress | `ReviewScoreClient.TryRegisterAsync` | Chuyển sang event-based sync hoặc outbox |
+| E6-US05 | Là hệ thống, tôi muốn Gemini phân tích cả ảnh sơ đồ (UML, ERD, flowchart) trong bài. | In progress | `PdfBase64` inline data đã có trong Gemini provider | Thêm `DiagramImages[]` (base64 PNG/JPG) vào parts gửi Gemini; cập nhật prompt hướng dẫn phân tích sơ đồ |
+| E6-US06 | Là Teacher, tôi muốn dùng API key Gemini cá nhân. | Done | credential endpoints, Data Protection, tests | Lấy `TeacherId` từ JWT thay vì client gửi |
+| E6-US07 | Là hệ thống, tôi muốn fallback qua pool system key. | Done | `SystemApiKeyPool`, retry tests | Thêm metrics/quota dashboard |
+| E6-US08 | Là ReviewScore, tôi muốn nhận AI grade tự động sau khi chấm. | In progress | `ReviewScoreClient.TryRegisterAsync` | Chuyển sang event-based sync hoặc outbox |
 
 ### Epic 7 - Review, Assignment Và Final Score
 
@@ -186,7 +191,7 @@ Quy ước trạng thái:
 | E8-US02 | Là Admin, tôi muốn xem audit log hệ thống. | Skeleton | `GET /audit-logs` trả empty items | Gom audit từ scoring/user/report |
 | E8-US03 | Là Teacher/Admin, tôi muốn xem tiến độ batch. | Skeleton | `GET /batches/{id}/progress` | Tính progress từ submission/job state thật |
 | E8-US04 | Là operator, tôi muốn xem trạng thái từng job. | Skeleton | `GET /jobs/{id}` trả progress giả | Persist Hangfire/job state, retry metadata |
-| E8-US05 | Là hệ thống, tôi muốn retry job lỗi. | Not started | kiến trúc đề xuất Hangfire | Implement retry policy và dead-letter handling |
+| E8-US05 | Là hệ thống, tôi muốn retry job lỗi (file hỏng, AI timeout). | Not started | kiến trúc đề xuất Hangfire | Implement retry policy và dead-letter handling |
 
 ### Epic 9 - Teacher Desktop UX
 
@@ -195,10 +200,10 @@ Quy ước trạng thái:
 | E9-US01 | Là user, tôi muốn login vào desktop app. | In progress | WPF gọi `/auth/login` | Token refresh và secure local storage |
 | E9-US02 | Là Admin, tôi muốn quản lý user trên desktop. | Done | WPF User Management | Loading/empty/error polish |
 | E9-US03 | Là Admin, tôi muốn import exam và edit rubric. | Done | WPF Exams & Rubrics | Rubric versioning/preview document |
-| E9-US04 | Là Admin, tôi muốn upload batch. | Skeleton | UI và endpoint skeleton | Nối với Submission DB/storage thật |
+| E9-US04 | Là Admin, tôi muốn chọn folder/file DOCX/PDF từ máy local và nộp batch. | Skeleton | UI placeholder | `OpenFileDialog`/`FolderBrowserDialog`, hiển thị danh sách file đã chọn, stream upload, progress bar |
 | E9-US05 | Là Admin, tôi muốn phân công bài cho Teacher. | In progress | WPF assignment flow + ReviewScore API | Chọn từ batch/submission thật |
 | E9-US06 | Là Teacher, tôi muốn xem bài được giao. | In progress | workload endpoint/UI | Thêm detail route từ selected work item |
-| E9-US07 | Là Teacher, tôi muốn review AI score và finalize. | Done | WPF Review Scores gọi `/scores/...` | Load từ assignment thay vì nhập submission id thủ công |
+| E9-US07 | Là Teacher, tôi muốn review AI score, xem extracted text và feedback sơ đồ rồi finalize. | Done | WPF Review Scores gọi `/scores/...` | Load từ assignment thay vì nhập submission id thủ công; hiển thị DiagramImages nếu có |
 | E9-US08 | Là Teacher, tôi muốn cấu hình Gemini API key cá nhân. | Done | WPF BYOK controls | UX giải thích fallback/quota rõ hơn |
 
 ### Epic 10 - Quality, Security Và Deployment
@@ -206,10 +211,9 @@ Quy ước trạng thái:
 | ID | User Story | Trạng thái | Bằng chứng hiện có | Việc còn lại |
 | --- | --- | --- | --- | --- |
 | E10-US01 | Là developer, tôi muốn test rule nghiệp vụ quan trọng. | Done | xUnit tests cho BYOK, assignment, score flow | Thêm integration tests qua WebApplicationFactory |
-| E10-US02 | Là developer, tôi muốn EF migration cho context có DB thật. | In progress | Identity, Exam, AiGrading, ReviewScore migrations | Migration cho Submission/OCR/System |
+| E10-US02 | Là developer, tôi muốn EF migration cho context có DB thật. | In progress | Identity, Exam, AiGrading, ReviewScore migrations | Migration cho Submission/DocProcessing schema |
 | E10-US03 | Là operator, tôi muốn secret không hard-code trong repo. | In progress | `.env`, DataProtection key volume | Secret manager/KMS cho production |
-| E10-US04 | Là hệ thống, tôi muốn queue/background jobs xử lý async. | Not started | RabbitMQ/Hangfire config định hướng | Broker abstraction, consumers, outbox |
-| E10-US05 | Là nhóm demo, tôi muốn publish Teacher Desktop thành EXE. | In progress | WPF project publish profile | Installer/signing, config gateway URL |
+| E10-US04 | Là nhóm demo, tôi muốn publish Teacher Desktop thành EXE. | In progress | WPF project publish profile | Installer/signing, config gateway URL |
 
 ## Endpoint Map Hiện Có
 
@@ -220,7 +224,7 @@ Quy ước trạng thái:
 | Subjects | `GET /subjects`, `POST /subjects`, `POST /subjects/{subjectCode}/teachers`, `GET /subjects/{subjectCode}/teachers`, `GET /teachers/{teacherId}/subjects` |
 | Exams/Rubrics | `GET /exams`, `POST /exams/import`, `GET /exams/{id}/rubric`, `PUT /exams/{id}/rubric`, `POST /exams/{id}/rubric/publish`, `GET /exams/{id}/document`, `DELETE /exams/{id}` |
 | Submission | `POST /batches/upload`, `GET /batches/{id}` |
-| OCR | `POST /ocr/jobs`, `GET /ocr/results/{submissionId}` |
+| Document Processing | `POST /documents/extract`, `GET /documents/results/{submissionId}` |
 | AI Grading | `POST /grading/evaluate`, `POST /grading/evaluate-from-exam`, `GET /grading/results/{submissionId}`, `GET /grading/suggestions/{submissionId}` |
 | AI Credentials | `GET /grading/credentials/{teacherId}`, `PUT /grading/credentials/{teacherId}`, `POST /grading/credentials/{teacherId}/test`, `DELETE /grading/credentials/{teacherId}` |
 | Assignments | `POST /assignments`, `POST /assignments/bulk`, `POST /assignments/distribute`, `GET /assignments/teachers/{teacherId}`, `GET /assignments/exams/{examId}`, `POST /assignments/{id}/start`, `POST /assignments/{id}/cancel` |
@@ -288,9 +292,9 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml up --build
 | --- | --- |
 | API Gateway | `http://localhost:5000` |
 | Swagger UI | `http://localhost:5000/swagger/index.html` |
-| RabbitMQ Management | `http://localhost:15672` |
-| MinIO Console | `http://localhost:9001` |
 | SQL Server | `localhost,1433` |
+
+> **Lưu ý:** MinIO và RabbitMQ đã được loại bỏ khỏi stack. File bài làm không lưu lên server; chỉ metadata và kết quả chấm được persist vào SQL Server.
 
 Không commit `deploy/.env`. Đổi toàn bộ password mẫu trước khi demo trên máy/host chung.
 
@@ -339,6 +343,7 @@ Ghi chú:
 - Service bỏ key trùng và thử key tiếp theo nếu gặp lỗi quota/auth/tạm thời.
 - Nếu có Google key nhưng không set `AI_PROVIDER`, service tự chọn Gemini.
 - Key cá nhân của Teacher được ưu tiên hơn system key; fallback sang system key chỉ khi Teacher bật fallback.
+- Gemini nhận cả **text** lẫn **ảnh sơ đồ** (inline base64) — hệ thống tận dụng khả năng multimodal để phân tích UML, ERD, flowchart trong bài làm.
 
 ## BYOK Cho Teacher
 
@@ -375,13 +380,14 @@ src/Clients/TeacherDesktop/Fptu.Pgs.TeacherDesktop/bin/Publish/win-x64/Fptu.Pgs.
 
 ## Roadmap Ưu Tiên Tiếp Theo
 
-1. Hoàn thiện Submission Service: DB schema, file metadata, MinIO adapter, `BatchUploaded` event.
-2. Hoàn thiện Document Processing: extractor cho DOCX/PDF/image, OCR result persistence, `OCRCompleted/OCRFailed`.
-3. Nối RabbitMQ và Hangfire thật cho luồng batch grading bất đồng bộ.
-4. Thay `DevelopmentTokenStore` bằng JWT/refresh token production-like và authorization policy.
-5. Hoàn thiện Report/Audit: export Excel/PDF, audit log từ scoring/user/job.
-6. Cải thiện Teacher Desktop: chọn submission từ workload/batch thay vì nhập GUID thủ công.
-7. Thêm integration tests cho Gateway + service endpoints và smoke test Docker Compose.
+1. **Document Processing** — implement `DocxTextExtractor` (OpenXML) và `PdfTextExtractor` (PdfPig); extract ảnh sơ đồ nhúng thành `DiagramImages[]`.
+2. **Submission Service** — EF schema `submission`, nhận `IFormFile[]` stream, điều phối DocProcessing → AI Grading → ReviewScore trong một pipeline.
+3. **AI Grading** — thêm `DiagramImages[]` vào Gemini parts; cập nhật prompt hướng dẫn phân tích sơ đồ kỹ thuật.
+4. **WPF Batch Upload** — `OpenFileDialog`/`FolderBrowserDialog` cho DOCX/PDF, stream upload, progress bar per-file.
+5. **JWT thật** — thay `DevelopmentTokenStore` bằng JWT/refresh token production-like và authorization policy.
+6. **Report/Audit** — export Excel/PDF thật, audit log từ scoring/user/job.
+7. **WPF UX** — load submission từ workload/batch thay vì nhập GUID thủ công; hiển thị diagram preview nếu có.
+8. **Integration tests** — Gateway + service endpoints, smoke test Docker Compose.
 
 ## Tài Liệu Liên Quan
 
